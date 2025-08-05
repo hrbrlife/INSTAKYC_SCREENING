@@ -354,6 +354,7 @@ services:
       - SANCTIONS_URL=http://sanctions_core:8000
       - CRYPTO_URL=http://graphsense_api:8000
       - WEB_URL=http://puppeteer_srv:7000
+      - API_KEY=change_me
 
 volumes:
   sanctions_data:

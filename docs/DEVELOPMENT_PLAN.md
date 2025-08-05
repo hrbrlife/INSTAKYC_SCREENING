@@ -36,11 +36,12 @@ This document breaks down the implementation described in the README into action
 - [ ] Store transient screenshots in `/tmp/webshot` and ensure cron task wipes files older than five minutes.
 
 ## Milestone 5: Unified API Gateway
-- [ ] Build FastAPI gateway (`uvicorn`) with Swagger docs and authentication middleware.
+- [x] Build FastAPI gateway (`uvicorn`) with Swagger docs and authentication middleware.
 - [ ] Configure environment variables:
   - `SANCTIONS_URL=http://sanctions_core:8000`
   - `CRYPTO_URL=http://graphsense_api:8000`
   - `WEB_URL=http://puppeteer_srv:7000`
+  - `API_KEY=change_me`
 - [ ] Integrate Redis queue for short-lived tasks and expose final REST API.
 
 ## Milestone 6: Docker Compose Orchestration
