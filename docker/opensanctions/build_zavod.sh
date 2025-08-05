@@ -9,4 +9,5 @@ docker run --rm \
   -v /srv/opensanctions/data:/data \
   registry.local/opensanctions/zavod:$TAG \
   zavod crawl all --export /data/export.tar.gz
+docker push registry.local/opensanctions/zavod:$TAG
 echo "Build complete: $TAG"

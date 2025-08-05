@@ -12,7 +12,7 @@ This document breaks down the implementation described in the README into action
 - [ ] Nightly build of `zavod` dataset:
   - [x] Create `docker/opensanctions/zavod` image with `docker build --build-arg ZAVOD_VERSION=latest`.
   - [x] Run ETL to export `/srv/opensanctions/data/export.tar.gz`.
-  - [ ] Schedule via cron `02:15 UTC` and push to local registry for immutability.
+  - [x] Schedule via cron `02:15 UTC` (see `docker/opensanctions/zavod.cron`) and push to local registry for immutability.
 - [ ] Deploy `yente` API (`sanctions_core`):
   - Mount read-only volume with export tarball.
   - Configure environment variables:
