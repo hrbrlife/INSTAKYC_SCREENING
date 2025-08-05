@@ -1,0 +1,81 @@
+version: "3.9"
+
+services:
+  sanctions_build:
+    build:
+      context: .
+      dockerfile: docker/opensanctions/zavod/Dockerfile
+    volumes:
+      - sanctions_data:/data
+    profiles:
+      - builder
+
+  sanctions_core:
+    image: ghcr.io/opensanctions/yente:latest
+    restart: unless-stopped
+    environment:
+      YENTE_INDEX_URL: http://elasticsearch:9200
+      YENTE_DATA_PATH: /data/export.tar.gz
+      YENTE_SCHEDULE: "0 */6 * * *"
+      YENTE_AUTO_REINDEX: "true"
+    volumes:
+      - sanctions_data:/data:ro
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+
+  graphsense_api:
+    image: graphsense/graphsense-api:latest
+    depends_on:
+      - redis
+    volumes:
+      - keyspace-data:/var/lib/graphsense
+
+  graphsense_ingest:
+    image: graphsense/graphsense-ingest:latest
+    volumes:
+      - keyspace-data:/var/lib/graphsense
+
+  puppeteer_srv:
+    build: ./docker/puppeteer
+    shm_size: "1gb"
+    environment:
+      PUPPETEER_HEADLESS: "true"
+      REDIS_URL: redis://redis:6379/0
+
+  api_gateway:
+    build: ./api_gateway
+    environment:
+      SANCTIONS_URL: http://sanctions_core:8000
+      CRYPTO_URL: http://graphsense_api:8000
+      WEB_URL: http://puppeteer_srv:7000
+    depends_on:
+      - sanctions_core
+      - graphsense_api
+      - puppeteer_srv
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+
+  traefik:
+    image: traefik:v2.10
+    command:
+      - --providers.docker=true
+      - --entrypoints.web.address=:80
+    ports:
+      - "80:80"
+    depends_on:
+      - api_gateway
+
+volumes:
+  sanctions_data:
+  es-data:
+  keyspace-data:
