@@ -63,6 +63,19 @@ def test_crypto_health_proxy(monkeypatch, httpx_mock):
     assert resp.json() == "READY"
 
 
+def test_web_search_proxy(monkeypatch, httpx_mock):
+    client = create_client(monkeypatch, httpx_mock)
+    httpx_mock.add_response(url="http://web/search?q=acme", json={"articles": []})
+
+    resp = client.get(
+        "/web/search",
+        headers={"X-API-KEY": "testkey"},
+        params={"q": "acme"},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"articles": []}
+
+
 def test_auth_failure(monkeypatch, httpx_mock):
     client = create_client(monkeypatch, httpx_mock)
 
