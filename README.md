@@ -53,7 +53,7 @@ OpenSanctions aggregates >1.7 million entities, PEPs and criminal lists and is
 
 ### 3.2 Daily build process (`sanctions_build` container)
 
-`docker/opensanctions/zavod:D$(date +%Y%m%d)` is built every night (02:15 UTC) via the script `docker/opensanctions/build_zavod.sh` and pushed to a local registry for immutability.
+`docker/opensanctions/zavod:D$(date +%Y%m%d)` is built every night (02:15 UTC) via the script `docker/opensanctions/build_zavod.sh` (scheduled by `docker/opensanctions/zavod.cron`) and pushed to a local registry for immutability.
 
 ```sh
 #!/usr/bin/env bash
@@ -67,6 +67,7 @@ docker run --rm \
   -v /srv/opensanctions/data:/data \
   registry.local/opensanctions/zavod:$TAG \
   zavod crawl all --export /data/export.tar.gz
+docker push registry.local/opensanctions/zavod:$TAG
 echo "Build complete: $TAG"
 ```
 

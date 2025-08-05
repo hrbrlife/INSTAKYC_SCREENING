@@ -1,0 +1,2 @@
+# Nightly OpenSanctions build at 02:15 UTC
+15 2 * * * /opt/kyc/build_zavod.sh >> /var/log/zavod_build.log 2>&1
