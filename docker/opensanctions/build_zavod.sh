@@ -3,11 +3,11 @@ set -euo pipefail
 TAG="$(date +%Y%m%d)"
 docker build \
   --build-arg ZAVOD_VERSION=latest \
-  -t registry.local/opensanctions/zavod:$TAG \
+  -t "registry.local/opensanctions/zavod:${TAG}" \
   -f ./docker/opensanctions/zavod/Dockerfile .
 docker run --rm \
   -v /srv/opensanctions/data:/data \
-  registry.local/opensanctions/zavod:$TAG \
+  "registry.local/opensanctions/zavod:${TAG}" \
   zavod crawl all --export /data/export.tar.gz
-docker push registry.local/opensanctions/zavod:$TAG
-echo "Build complete: $TAG"
+docker push "registry.local/opensanctions/zavod:${TAG}"
+echo "Build complete: ${TAG}"

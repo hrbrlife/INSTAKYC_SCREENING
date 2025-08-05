@@ -1,3 +1,4 @@
+---
 version: "3.9"
 
 services:
@@ -63,7 +64,12 @@ services:
 
   redis:
     image: redis:7
-    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    command:
+      - "redis-server"
+      - "--maxmemory"
+      - "256mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
 
   traefik:
     image: traefik:v2.10
