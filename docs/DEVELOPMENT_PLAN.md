@@ -28,12 +28,12 @@ This document breaks down the implementation described in the README into action
 - [x] Verify `/health` endpoint returns `READY`.
 
 ## Milestone 4: Open-Web Adverse-Media Search
-- [ ] Build `puppeteer_srv` container (`Node18 + Puppeteer + local llama.cpp`).
-- [ ] Set environment variables:
+- [x] Build `puppeteer_srv` container (`Node18 + Puppeteer + local llama.cpp`).
+- [x] Set environment variables:
   - `PUPPETEER_HEADLESS=true`
   - `REDIS_URL=redis://redis:6379/0`
-- [ ] Implement proxy rotation via `npm run rotate`.
-- [ ] Store transient screenshots in `/tmp/webshot` and ensure cron task wipes files older than five minutes.
+- [x] Implement proxy rotation via `npm run rotate`.
+- [x] Store transient screenshots in `/tmp/webshot` and ensure cron task wipes files older than five minutes.
 
 ## Milestone 5: Unified API Gateway
 - [x] Build FastAPI gateway (`uvicorn`) with Swagger docs and authentication middleware.
