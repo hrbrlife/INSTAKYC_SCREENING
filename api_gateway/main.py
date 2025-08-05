@@ -28,6 +28,24 @@ async def get_sanction_entity(entity_id: str):
     return resp.json()
 
 
+@app.get("/sanctions/search", dependencies=[Depends(verify_api_key)])
+async def search_sanctions(q: str):
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.sanctions_url}/search", params={"q": q})
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+    return resp.json()
+
+
+@app.post("/sanctions/match", dependencies=[Depends(verify_api_key)])
+async def match_sanctions(payload: dict):
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(f"{settings.sanctions_url}/match", json=payload)
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+    return resp.json()
+
+
 @app.get("/crypto/health", dependencies=[Depends(verify_api_key)])
 async def crypto_health():
     async with httpx.AsyncClient() as client:
