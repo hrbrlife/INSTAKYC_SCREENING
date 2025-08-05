@@ -12,6 +12,7 @@ The gateway reads the following environment variables:
 - `CRYPTO_URL` – base URL of the GraphSense service.
 - `WEB_URL` – base URL of the web-scraping service.
 - `API_KEY` – shared secret required in the `X-API-KEY` header.
+- `REDIS_URL` – connection string for the Redis task queue.
 
 ## Endpoints
 
@@ -20,6 +21,8 @@ The gateway reads the following environment variables:
 - `POST /sanctions/match` – bulk match against the sanctions index.
 - `GET /crypto/health` – health check for the GraphSense service.
 - `GET /web/search?q=...` – proxy open‑web search requests.
+- `POST /tasks` – enqueue a short‑lived task.
+- `GET /tasks/{task_id}` – retrieve task status.
 
 ## Development
 
