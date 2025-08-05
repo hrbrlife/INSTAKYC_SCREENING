@@ -9,7 +9,7 @@ This document breaks down the implementation described in the README into action
 - [ ] Prepare separate sub-nets and configure least-privilege users for containers.
 
 ## Milestone 2: Sanctions / PEP Engine
-- [ ] Nightly build of `zavod` dataset:
+- [x] Nightly build of `zavod` dataset:
   - [x] Create `docker/opensanctions/zavod` image with `docker build --build-arg ZAVOD_VERSION=latest`.
   - [x] Run ETL to export `/srv/opensanctions/data/export.tar.gz`.
   - [x] Schedule via cron `02:15 UTC` (see `docker/opensanctions/zavod.cron`) and push to local registry for immutability.
@@ -44,7 +44,7 @@ This document breaks down the implementation described in the README into action
 - [ ] Integrate Redis queue for short-lived tasks and expose final REST API.
 
 ## Milestone 6: Docker Compose Orchestration
-- [ ] Assemble `compose-sanctions.yml` with services:
+- [x] Assemble `compose-sanctions.yml` with services:
   - `sanctions_core`, `sanctions_build`, `graphsense_api`, `graphsense_ingest`, `puppeteer_srv`, `api_gateway`, `redis`, `traefik/nginx`.
 - [ ] Run `docker compose --profile builder up sanctions_build` nightly and `docker compose up -d` for runtime services.
 - [ ] Apply TLS ingress, rate limiting, and network isolation.
