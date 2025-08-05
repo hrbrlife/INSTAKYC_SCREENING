@@ -37,12 +37,13 @@ This document breaks down the implementation described in the README into action
 
 ## Milestone 5: Unified API Gateway
 - [x] Build FastAPI gateway (`uvicorn`) with Swagger docs and authentication middleware.
-- [ ] Configure environment variables:
+- [x] Configure environment variables:
   - `SANCTIONS_URL=http://sanctions_core:8000`
   - `CRYPTO_URL=http://graphsense_api:8000`
   - `WEB_URL=http://puppeteer_srv:7000`
   - `API_KEY=change_me`
-- [ ] Integrate Redis queue for short-lived tasks and expose final REST API.
+  - `REDIS_URL=redis://redis:6379/0`
+- [x] Integrate Redis queue for short-lived tasks and expose final REST API.
 
 ## Milestone 6: Docker Compose Orchestration
 - [x] Assemble `compose-sanctions.yml` with services:

@@ -355,6 +355,7 @@ services:
       - CRYPTO_URL=http://graphsense_api:8000
       - WEB_URL=http://puppeteer_srv:7000
       - API_KEY=change_me
+      - REDIS_URL=redis://redis:6379/0
 
 volumes:
   sanctions_data:

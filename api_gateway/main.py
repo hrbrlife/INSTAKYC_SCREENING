@@ -1,6 +1,8 @@
 from fastapi import Depends, FastAPI, Header, HTTPException
 import httpx
+import redis.asyncio as redis
 from pydantic_settings import BaseSettings
+import uuid
 
 
 class Settings(BaseSettings):
@@ -8,10 +10,12 @@ class Settings(BaseSettings):
     crypto_url: str
     web_url: str
     api_key: str
+    redis_url: str
 
 
 settings = Settings()
 app = FastAPI(title="API Gateway")
+redis_client = redis.from_url(settings.redis_url, decode_responses=True)
 
 
 async def verify_api_key(x_api_key: str = Header(...)) -> None:
@@ -26,6 +30,23 @@ async def get_sanction_entity(entity_id: str):
     if resp.status_code != 200:
         raise HTTPException(status_code=resp.status_code, detail=resp.text)
     return resp.json()
+
+
+@app.post("/tasks", dependencies=[Depends(verify_api_key)])
+async def enqueue_task(payload: dict):
+    task_id = str(uuid.uuid4())
+    await redis_client.hset(f"task:{task_id}", mapping={"status": "queued"})
+    await redis_client.rpush("task_queue", task_id)
+    await redis_client.expire(f"task:{task_id}", 300)
+    return {"task_id": task_id, "status": "queued"}
+
+
+@app.get("/tasks/{task_id}", dependencies=[Depends(verify_api_key)])
+async def get_task(task_id: str):
+    data = await redis_client.hgetall(f"task:{task_id}")
+    if not data:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"task_id": task_id, **data}
 
 
 @app.get("/sanctions/search", dependencies=[Depends(verify_api_key)])
