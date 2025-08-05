@@ -14,13 +14,13 @@ This document breaks down the implementation described in the README into action
   - [x] Run ETL to export `/srv/opensanctions/data/export.tar.gz`.
   - [x] Schedule via cron `02:15 UTC` (see `docker/opensanctions/zavod.cron`) and push to local registry for immutability.
 - [ ] Deploy `yente` API (`sanctions_core`):
-  - Mount read-only volume with export tarball.
-  - Configure environment variables:
+  - [x] Mount read-only volume with export tarball.
+  - [x] Configure environment variables:
     - `YENTE_INDEX_URL=http://elasticsearch:9200`
     - `YENTE_DATA_PATH=/data/export.tar.gz`
     - `YENTE_SCHEDULE="0 */6 * * *"`
     - `YENTE_AUTO_REINDEX="true"`
-  - Ensure `GET /entities/{id}`, `GET /search`, and `POST /match` endpoints are reachable behind the API gateway.
+  - [ ] Ensure `GET /entities/{id}`, `GET /search`, and `POST /match` endpoints are reachable behind the API gateway.
 
 ## Milestone 3: Blockchain Screening (GraphSense)
 - [ ] Deploy `graphsense_api` for REST access and `graphsense_ingest` for ETL workers.
