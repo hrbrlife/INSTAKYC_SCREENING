@@ -444,6 +444,14 @@ Alerts (Prometheus‑alertmanager) trigger a Slack webhook if:
 
 ---
 
+## 14 Testing (≈ 50 words)
+
+Install test dependencies with `pip install -r requirements-test.txt` and run `pytest`.
+Current tests validate that the `sanctions_core` service in `compose-sanctions.yml` mounts the dataset volume read-only and sets
+the expected environment variables.
+
+---
+
 ### Bibliography
 
 * GraphSense project homepage ([Graphsense][4])
