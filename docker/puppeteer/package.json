@@ -1,0 +1,10 @@
+{
+  "name": "puppeteer_srv",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "cleanup": "node cleanup.js",
+    "rotate": "node rotate.js"
+  }
+}
