@@ -27,6 +27,33 @@ def test_sanction_entity_proxy(monkeypatch, httpx_mock):
     assert resp.json() == {"id": "123"}
 
 
+def test_sanctions_search_proxy(monkeypatch, httpx_mock):
+    client = create_client(monkeypatch, httpx_mock)
+    httpx_mock.add_response(url="http://sanctions/search?q=john", json={"results": []})
+
+    resp = client.get(
+        "/sanctions/search",
+        headers={"X-API-KEY": "testkey"},
+        params={"q": "john"},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"results": []}
+
+
+def test_sanctions_match_proxy(monkeypatch, httpx_mock):
+    client = create_client(monkeypatch, httpx_mock)
+    httpx_mock.add_response(url="http://sanctions/match", json={"matches": []})
+
+    payload = {"queries": [{"query": "john"}]}
+    resp = client.post(
+        "/sanctions/match",
+        headers={"X-API-KEY": "testkey"},
+        json=payload,
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"matches": []}
+
+
 def test_crypto_health_proxy(monkeypatch, httpx_mock):
     client = create_client(monkeypatch, httpx_mock)
     httpx_mock.add_response(url="http://crypto/health", json="READY")

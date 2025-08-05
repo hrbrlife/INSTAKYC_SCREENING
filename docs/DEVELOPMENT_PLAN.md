@@ -20,7 +20,7 @@ This document breaks down the implementation described in the README into action
     - `YENTE_DATA_PATH=/data/export.tar.gz`
     - `YENTE_SCHEDULE="0 */6 * * *"`
     - `YENTE_AUTO_REINDEX="true"`
-  - Ensure `GET /entities/{id}`, `GET /search`, and `POST /match` endpoints are reachable behind the API gateway.
+  - [x] Ensure `GET /entities/{id}`, `GET /search`, and `POST /match` endpoints are reachable behind the API gateway.
 
 ## Milestone 3: Blockchain Screening (GraphSense)
 - [ ] Deploy `graphsense_api` for REST access and `graphsense_ingest` for ETL workers.
