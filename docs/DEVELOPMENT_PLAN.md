@@ -13,9 +13,9 @@ This document breaks down the implementation described in the README into action
   - [x] Create `docker/opensanctions/zavod` image with `docker build --build-arg ZAVOD_VERSION=latest`.
   - [x] Run ETL to export `/srv/opensanctions/data/export.tar.gz`.
   - [x] Schedule via cron `02:15 UTC` (see `docker/opensanctions/zavod.cron`) and push to local registry for immutability.
-- [ ] Deploy `yente` API (`sanctions_core`):
-  - Mount read-only volume with export tarball.
-  - Configure environment variables:
+- [x] Deploy `yente` API (`sanctions_core`):
+  - [x] Mount read-only volume with export tarball.
+  - [x] Configure environment variables:
     - `YENTE_INDEX_URL=http://elasticsearch:9200`
     - `YENTE_DATA_PATH=/data/export.tar.gz`
     - `YENTE_SCHEDULE="0 */6 * * *"`
@@ -23,9 +23,9 @@ This document breaks down the implementation described in the README into action
   - [x] Ensure `GET /entities/{id}`, `GET /search`, and `POST /match` endpoints are reachable behind the API gateway.
 
 ## Milestone 3: Blockchain Screening (GraphSense)
-- [ ] Deploy `graphsense_api` for REST access and `graphsense_ingest` for ETL workers.
-- [ ] Persist data on dedicated volumes (`keyspace-data:`) and backup with `nodetool snapshot`.
-- [ ] Verify `/health` endpoint returns `READY`.
+- [x] Deploy `graphsense_api` for REST access and `graphsense_ingest` for ETL workers.
+- [x] Persist data on dedicated volumes (`keyspace-data:`) and backup with `nodetool snapshot`.
+- [x] Verify `/health` endpoint returns `READY`.
 
 ## Milestone 4: Open-Web Adverse-Media Search
 - [ ] Build `puppeteer_srv` container (`Node18 + Puppeteer + local llama.cpp`).

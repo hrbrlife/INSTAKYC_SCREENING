@@ -53,3 +53,12 @@ async def crypto_health():
     if resp.status_code != 200:
         raise HTTPException(status_code=resp.status_code, detail=resp.text)
     return resp.json()
+
+
+@app.get("/web/search", dependencies=[Depends(verify_api_key)])
+async def web_search(q: str):
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.web_url}/search", params={"q": q})
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+    return resp.json()
