@@ -29,10 +29,9 @@ network:
 - **`puppeteer_srv`** – Minimal Node.js HTTP server that writes a text artefact
   for every `/search` request. It does not run a browser or capture screenshots.
   Cleanup and proxy rotation scripts are simple placeholders.
-- **`redis`** – Shared state for the task queue example. No persistence or
-  authentication is configured.
-- **`traefik`** – Basic reverse proxy definition without TLS or routing rules.
-  It simply exposes the gateway on port 80.
+- **`redis`** – Shared state for the task queue example. The compose stack now
+  enables append-only persistence and sets a development password by default so
+  the queue can be accessed safely when the port is published.
 
 ## Readiness assessment
 | Area | Status | Notes |
@@ -68,21 +67,38 @@ The test suite starts a local instance of the Node stub; it does not touch the
 Docker services.
 
 ### Running the services locally
-1. Provide the required environment variables before launching the API gateway:
+1. The FastAPI gateway ships with sensible defaults so it can boot with no
+   environment variables defined. Override them as needed in a local `.env`
+   file:
    ```sh
-   export SANCTIONS_URL=http://sanctions_core:8000
-   export CRYPTO_URL=http://graphsense_api:8000
-   export WEB_URL=http://puppeteer_srv:7000
-   export API_KEY=change_me
-   export REDIS_URL=redis://redis:6379/0
+   SANCTIONS_URL=http://localhost:8001  # optional override
+   API_KEY=supersecret
+   REDIS_URL=redis://:supersecret@localhost:6379/0
    ```
-2. Start Redis and the placeholder services (e.g. via Docker Compose). Be aware
-   that `graphsense_api` and `sanctions_core` will not return useful results
-   without additional data pipelines.
-3. Interact with the API gateway using the `X-API-KEY` header.
+2. Launch the development stack. The Compose file maps the API gateway to
+   `http://localhost:8000`, enables Redis persistence with a password, and keeps
+   the rest of the services on the internal Docker network. Supply a custom
+   password by setting `REDIS_PASSWORD` before running `docker compose` (it
+   defaults to `devpass`).
+   ```sh
+   docker compose -f compose-sanctions.yml up --build
+   ```
+3. Interact with the API gateway using the `X-API-KEY` header (defaults to
+   `change_me` when running via Docker Compose).
 
-Because the downstream services are incomplete, only the `/tasks` endpoint and
-`/web/search` stub will respond successfully out of the box.
+### What currently works
+- `/tasks` creates ephemeral queue items in Redis. Because Redis now persists to
+  disk you can restart the service without losing recently enqueued tasks.
+- `/web/search` proxies to the Node stub, which writes a text artefact for each
+  request.
+
+### Known limitations when running the stack
+- `sanctions_core` still expects an OpenSanctions export at `/data/export.tar.gz`
+  and will return errors until Milestone 2 automates the dataset build.
+- `graphsense_api`/`graphsense_ingest` require Cassandra and Spark clusters that
+  are **not** provisioned by this repository. The containers will stay in a
+  crash loop until those dependencies are provided or the service is replaced.
+- The Puppeteer stub does not launch a browser; it only echoes queries to disk.
 
 ## Directory layout
 ```

@@ -6,7 +6,9 @@ underlying services. Requests must include an `X-API-KEY` header matching the
 
 ## Configuration
 
-The gateway reads the following environment variables:
+The gateway reads the following environment variables (all of which have
+development-friendly defaults baked into the application so it can boot without
+additional configuration):
 
 - `SANCTIONS_URL` – base URL of the sanctions service.
 - `CRYPTO_URL` – base URL of the GraphSense service.
