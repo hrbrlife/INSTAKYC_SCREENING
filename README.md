@@ -17,7 +17,9 @@ package now provides the simplest path to productionising the workflows.
 
 ## ⚡️ MVP quickstart
 1. Provide a single API key (used for both deployment and request
-   authentication):
+   authentication). The bootstrap script writes the `.env` file consumed by
+   Docker Compose and creates the persistent cache directory used for the
+   OpenSanctions dataset:
    ```bash
    ./scripts/bootstrap.sh my-super-secret-key
    ```
@@ -26,12 +28,23 @@ package now provides the simplest path to productionising the workflows.
    ```bash
    docker compose -f compose-mvp.yml up --build -d
    ```
-3. Query the API with the same key supplied during bootstrapping:
+3. Query the API with the same key supplied during bootstrapping. Below are
+   examples for each workflow shipped with the MVP server:
    ```bash
    curl -H "X-API-Key: my-super-secret-key" \
      -X POST http://localhost:8000/sanctions/search \
      -H "Content-Type: application/json" \
      -d '{"query": "John Smith"}'
+
+   curl -H "X-API-Key: my-super-secret-key" \
+     -X POST http://localhost:8000/web/reputation \
+     -H "Content-Type: application/json" \
+     -d '{"query": "Acme Corp"}'
+
+   curl -H "X-API-Key: my-super-secret-key" \
+     -X POST http://localhost:8000/tron/reputation \
+     -H "Content-Type: application/json" \
+     -d '{"address": "TMwFHYXLJaRUPeW6421aqXL4ZEzPRFGkGT"}'
    ```
 
 ### Available endpoints
