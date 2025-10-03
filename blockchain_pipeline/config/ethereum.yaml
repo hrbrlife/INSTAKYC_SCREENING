@@ -1,0 +1,4 @@
+# Placeholder GraphSense ETL configuration for Ethereum.
+cluster: ethereum
+inputs:
+  - s3://instakyc-graphsense-raw/ethereum/

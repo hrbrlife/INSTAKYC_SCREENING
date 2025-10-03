@@ -1,0 +1,8 @@
+# Placeholder GraphSense ETL configuration for Bitcoin.
+# Replace the datasource paths with the BigQuery export manifests referenced in
+# docs/blockchain_strategy.md. The structure mirrors the upstream
+# graphsense-etl project and is provided so that ``blockchain_pipeline`` can
+# validate configuration discovery during local dry runs.
+cluster: bitcoin
+inputs:
+  - s3://instakyc-graphsense-raw/bitcoin/

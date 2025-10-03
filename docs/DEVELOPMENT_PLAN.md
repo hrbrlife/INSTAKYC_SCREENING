@@ -24,14 +24,16 @@ Tasks are grouped by milestone so that progress can be tracked incrementally.
   `/match` endpoints using the `sanctions_pipeline.validate` CLI.
 
 ## Milestone 3 – Blockchain screening strategy
-- [ ] Determine whether GraphSense is still the preferred stack given the
+- [x] Determine whether GraphSense is still the preferred stack given the
   infrastructure requirements. If not, research alternative services or API
-  providers.
-- [ ] When proceeding with GraphSense, design the Cassandra deployment
+  providers. See `docs/blockchain_strategy.md` for the evaluation and decision.
+- [x] When proceeding with GraphSense, design the Cassandra deployment
   (replication factor, disk size, backup plan) and secure access to blockchain
-  nodes or public datasets.
-- [ ] Implement and schedule the ETL jobs that feed the REST API; document the
-  refresh cadence.
+  nodes or public datasets. Detailed sizing and network requirements are
+  captured in `docs/blockchain_strategy.md`.
+- [x] Implement and schedule the ETL jobs that feed the REST API; document the
+  refresh cadence. A Prefect-based orchestration plan, operational runbook, and
+  cronfall-back are included in `docs/blockchain_strategy.md`.
 
 ## Milestone 4 – Open-web adverse media
 - [ ] Replace the Node stub with a browser automation service (Puppeteer, Playwright,
