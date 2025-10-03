@@ -18,18 +18,25 @@ package now provides the simplest path to productionising the workflows.
 ## ⚡️ MVP quickstart
 1. Provide a single API key (used for both deployment and request
    authentication). The bootstrap script writes the `.env` file consumed by
-   Docker Compose and creates the persistent cache directory used for the
+   Docker Compose, backs up any existing configuration, checks that Docker is
+   installed, and creates the persistent cache directory used for the
    OpenSanctions dataset:
    ```bash
    ./scripts/bootstrap.sh my-super-secret-key
    ```
-2. Boot the stack with Docker Compose. The service downloads the latest
-   OpenSanctions export on first start and then refreshes it every 12 hours.
+2. Boot the stack with Docker Compose (or `docker-compose` if the legacy
+   command is detected). The service downloads the latest OpenSanctions export
+   on first start and then refreshes it every 12 hours.
    ```bash
    docker compose -f compose-mvp.yml up --build -d
    ```
+   > The container ships with a built-in health check that polls
+   > `http://localhost:8000/healthz`. Use `docker compose ps` to confirm that
+   > the container is reported as `healthy` before sending requests.
 3. Query the API with the same key supplied during bootstrapping. Below are
-   examples for each workflow shipped with the MVP server:
+   examples for each workflow shipped with the MVP server. Refer to
+   [`docs/mvp_operations.md`](docs/mvp_operations.md) for day-two operational
+   guidance.
    ```bash
    curl -H "X-API-Key: my-super-secret-key" \
      -X POST http://localhost:8000/sanctions/search \
@@ -74,7 +81,19 @@ response for forensic follow-ups.
 The `screening_service` downloads `targets.simple.csv` from the latest
 OpenSanctions release and caches it under `data/cache/`. The file is
 automatically refreshed every 12 hours. Delete the cache or call the `/healthz`
-endpoint to check when the data was last pulled.
+endpoint to check when the data was last pulled. When running via Docker
+Compose, the service writes to the `screening_data` volume so refreshes persist
+between container restarts.
+
+### Operational checklist
+
+- Bootstrap the environment: `./scripts/bootstrap.sh <api-key>`.
+- Start the stack: `docker compose -f compose-mvp.yml up --build -d`.
+- Confirm the service is healthy: `docker compose ps` (look for the `healthy`
+  status) or `docker compose logs -f screening_api` if troubleshooting.
+- Exercise the workflows using the curl snippets above.
+- Stop the stack when finished: `docker compose down` (the cached data is
+  preserved in the named volume).
 
 ## Legacy prototype architecture
 The repository still contains the original docker-compose stack used during the
