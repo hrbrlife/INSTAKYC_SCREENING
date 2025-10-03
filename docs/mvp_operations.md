@@ -12,22 +12,30 @@ service.
 
 ## Bootstrapping
 
-Run the helper script once per environment to create the `.env` file and ensure
-the persistent cache directory exists:
+Run the helper script once per environment to create the `.env` file (if
+required), ensure the persistent cache directory exists, and start the stack.
+Provide the API key interactively or via the `START_API_KEY`,
+`SCREENING_API_KEY`, or `API_KEY` environment variables:
 
 ```bash
-./scripts/bootstrap.sh <api-key>
+./start.sh --build
 ```
 
-The script validates the argument, backs up any existing `.env`, checks for
-Docker/Compose availability, and prints the exact command required to start the
-stack.
+The script writes/updates `.env` with secure permissions, checks for
+Docker/Compose availability, and kicks off the compose build on the first run.
 
 ## Starting the stack
 
+Use the same helper script without `--build` for subsequent restarts. It will
+reuse the cached dataset and existing Docker image unless the `--build` flag is
+provided:
+
 ```bash
-docker compose -f compose-mvp.yml up --build -d
+./start.sh
 ```
+
+If you prefer the raw Docker Compose command, it is equivalent to `docker
+compose -f compose-mvp.yml up -d`.
 
 - The container exposes the API on `http://localhost:8000`.
 - A Docker health check queries `/healthz`. Check `docker compose ps` for the

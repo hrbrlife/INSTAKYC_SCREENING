@@ -2,7 +2,7 @@
 
 The consolidated FastAPI service exposes three screening workflows guarded by a
 single API key. All requests must include the `X-API-Key` header populated with
-the value supplied to `./scripts/bootstrap.sh`.
+the value supplied when running `./start.sh`.
 
 ## `POST /sanctions/search`
 - **Purpose**: Fuzzy-match names against the cached OpenSanctions
