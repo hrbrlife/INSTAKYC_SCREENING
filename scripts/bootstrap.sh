@@ -50,21 +50,20 @@ echo "[bootstrap] Dataset cache directory ensured at $DATA_DIR"
 docker_available=true
 if ! command -v docker >/dev/null 2>&1; then
   docker_available=false
-  echo "[bootstrap] Warning: docker is not installed or not in PATH." >&2
+  echo "[bootstrap] Error: docker is not installed or not in PATH." >&2
 fi
 
 compose_cmd="docker compose"
-if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
-  if command -v docker-compose >/dev/null 2>&1; then
-    compose_cmd="docker-compose"
-  else
-    compose_cmd="docker compose"
-    echo "[bootstrap] Warning: docker compose command not detected. Install Docker Desktop or docker-compose." >&2
+if [[ "$docker_available" == true ]]; then
+  if ! docker compose version >/dev/null 2>&1; then
+    echo "[bootstrap] Error: docker compose plugin not detected. Install Docker Desktop or the docker compose plugin." >&2
+    docker_available=false
   fi
 fi
 
 if [[ "$docker_available" == true ]]; then
   echo "[bootstrap] Next step: start the stack with '$compose_cmd -f compose-mvp.yml up --build -d'"
 else
-  echo "[bootstrap] Install Docker and rerun the compose command to start the stack." >&2
+  echo "[bootstrap] Install the required Docker components and rerun the compose command to start the stack." >&2
+  exit 1
 fi

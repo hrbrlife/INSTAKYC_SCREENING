@@ -55,8 +55,8 @@ The resulting workflow and operational guidance are documented in
   Prometheus metrics alongside health endpoints for orchestration checks.
 - [x] Harden container configurations (least privilege users, resource limits,
   network policies) and ensure secrets are managed through vaulting or Docker
-  secrets. Containers now run as non-root users and docker-compose consumes
-  Docker secrets for API keys, Redis credentials, and service tokens.
+  secrets. Containers now run as non-root users and the Docker Compose plugin
+  consumes Docker secrets for API keys, Redis credentials, and service tokens.
 
 ## Milestone 6 – Delivery pipeline
 - [ ] Add automated testing, linting, and image builds to a CI system.

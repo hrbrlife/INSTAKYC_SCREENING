@@ -6,7 +6,7 @@ service.
 ## Prerequisites
 
 - Docker Engine 20.10+ or Docker Desktop.
-- The `docker compose` plugin (or the legacy `docker-compose` binary).
+- The `docker compose` plugin.
 - Internet connectivity so the container can download OpenSanctions datasets,
   DuckDuckGo news results, and TronScan account metadata.
 
