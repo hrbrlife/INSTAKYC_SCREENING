@@ -24,8 +24,8 @@ network:
   scheduling; no CI automation is present.
 - **`graphsense_api` / `graphsense_ingest`** – References upstream GraphSense
   images but does not provision Cassandra/Keyspace data or blockchain ETL jobs.
-  The containers will not be usable until data stores and ingestion scripts are
-  supplied.
+  The newly documented plan in `docs/blockchain_strategy.md` outlines the
+  infrastructure and ETL work required to operationalise these services.
 - **`puppeteer_srv`** – Minimal Node.js HTTP server that writes a text artefact
   for every `/search` request. It does not run a browser or capture screenshots.
   Cleanup and proxy rotation scripts are simple placeholders.
@@ -140,9 +140,9 @@ If you plan to continue the project, prioritise the following tasks:
 
 1. Decide on a data refresh strategy for OpenSanctions and automate the
    pipeline (cron job, storage location, credentials management).
-2. Scope the infrastructure required for GraphSense (Cassandra cluster, Spark
-   jobs, blockchain node access) or replace it with a lighter-weight alternative
-   if that scope is infeasible.
+2. Follow the blockchain rollout blueprint in `docs/blockchain_strategy.md`
+   before attempting to run GraphSense locally. Provision Cassandra, schedule
+   the Prefect ETL, and wire the API gateway once data is available.
 3. Replace the Node stub with a real scraping worker and design a task queue
    that can handle browser automation safely.
 4. Add observability, security controls, and documentation for operating the

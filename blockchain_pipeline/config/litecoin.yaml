@@ -1,0 +1,4 @@
+# Placeholder GraphSense ETL configuration for Litecoin.
+cluster: litecoin
+inputs:
+  - s3://instakyc-graphsense-raw/litecoin/
