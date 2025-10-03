@@ -5,6 +5,154 @@ COMPOSE_FILE="compose-mvp.yml"
 ENV_FILE=".env"
 DATA_DIR="data/cache"
 
+log_info() {
+  echo "[start] $*"
+}
+
+log_warn() {
+  echo "[start][warn] $*" >&2
+}
+
+log_error() {
+  echo "[start][error] $*" >&2
+}
+
+SUDO=""
+if [[ $(id -u) -ne 0 ]]; then
+  if command -v sudo >/dev/null 2>&1; then
+    SUDO="sudo"
+  else
+    log_warn "Running without root privileges and sudo is unavailable. Operations requiring elevated privileges may fail."
+  fi
+fi
+
+run_privileged() {
+  if [[ -n "$SUDO" ]]; then
+    "$SUDO" -E "$@"
+  else
+    "$@"
+  fi
+}
+
+require_privileged() {
+  if [[ $(id -u) -eq 0 || -n "$SUDO" ]]; then
+    return
+  fi
+  log_error "This operation requires administrator privileges. Re-run with sudo or as root."
+  exit 1
+}
+
+generate_dev_api_key() {
+  tr -dc 'A-Za-z0-9' </dev/urandom | head -c 40
+}
+
+ensure_prerequisites() {
+  if ! command -v apt-get >/dev/null 2>&1; then
+    log_warn "apt-get not found. Skipping automatic dependency installation."
+    return
+  fi
+
+  local packages=(ca-certificates curl gnupg lsb-release)
+  local to_install=()
+
+  for pkg in "${packages[@]}"; do
+    if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+      to_install+=("$pkg")
+    fi
+  done
+
+  if [[ ${#to_install[@]} -eq 0 ]]; then
+    return
+  fi
+
+  log_info "Installing prerequisite packages: ${to_install[*]}"
+  require_privileged
+  run_privileged apt-get update
+  DEBIAN_FRONTEND=noninteractive run_privileged apt-get install -y "${to_install[@]}"
+}
+
+add_docker_repository() {
+  require_privileged
+
+  run_privileged install -m 0755 -d /etc/apt/keyrings
+
+  local gpg_tmp
+  gpg_tmp=$(mktemp)
+  curl -fsSL https://download.docker.com/linux/debian/gpg -o "$gpg_tmp"
+
+  local key_tmp
+  key_tmp=$(mktemp)
+  gpg --dearmor --yes --output "$key_tmp" "$gpg_tmp"
+  run_privileged install -m 0644 "$key_tmp" /etc/apt/keyrings/docker.gpg
+  rm -f "$gpg_tmp" "$key_tmp"
+
+  local arch
+  arch=$(dpkg --print-architecture)
+  local codename=""
+  if command -v lsb_release >/dev/null 2>&1; then
+    codename=$(lsb_release -cs)
+  elif [[ -f /etc/os-release ]]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    codename="${VERSION_CODENAME:-${UBUNTU_CODENAME:-}}"
+  fi
+  if [[ -z "$codename" ]]; then
+    codename="bookworm"
+    log_warn "Unable to detect Debian codename automatically. Defaulting to 'bookworm'."
+  fi
+
+  local repo_entry="deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian ${codename} stable"
+  echo "$repo_entry" | run_privileged tee /etc/apt/sources.list.d/docker.list >/dev/null
+}
+
+ensure_docker_running() {
+  if command -v systemctl >/dev/null 2>&1; then
+    if ! run_privileged systemctl is-active --quiet docker; then
+      log_info "Starting docker service via systemd"
+      if ! run_privileged systemctl enable --now docker; then
+        log_warn "Failed to start docker with systemd."
+      fi
+    fi
+  elif command -v service >/dev/null 2>&1; then
+    log_info "Starting docker service via service command"
+    if ! run_privileged service docker start >/dev/null 2>&1; then
+      log_warn "Failed to start docker service."
+    fi
+  else
+    log_warn "No known service manager found to start docker automatically."
+  fi
+}
+
+ensure_docker() {
+  if command -v docker >/dev/null 2>&1 && run_privileged docker compose version >/dev/null 2>&1; then
+    ensure_docker_running
+    return
+  fi
+
+  if ! command -v apt-get >/dev/null 2>&1; then
+    log_error "Docker is not installed and automatic installation is unavailable without apt-get."
+    exit 1
+  fi
+
+  log_info "Docker not detected. Installing Docker Engine and Compose plugin."
+  ensure_prerequisites
+  add_docker_repository
+  run_privileged apt-get update
+  DEBIAN_FRONTEND=noninteractive run_privileged apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+  ensure_docker_running
+
+  if ! command -v docker >/dev/null 2>&1; then
+    log_error "Docker installation failed."
+    exit 1
+  fi
+
+  if ! run_privileged docker compose version >/dev/null 2>&1; then
+    log_error "Docker Compose plugin installation failed."
+    exit 1
+  fi
+}
+
 ensure_api_key() {
   local supplied_key=""
   local explicit_override=false
@@ -52,14 +200,14 @@ ensure_api_key() {
       read -rsp "Enter API key for the screening service: " supplied_key
       echo
     else
-      echo "[start] SCREENING_API_KEY is required. Provide it via START_API_KEY, SCREENING_API_KEY or API_KEY environment variables." >&2
-      exit 1
+      log_warn "No API key provided via environment. Generating a local development key."
+      supplied_key=$(generate_dev_api_key)
     fi
   fi
 
   if [[ -z "$supplied_key" ]]; then
-    echo "[start] API key cannot be empty." >&2
-    exit 1
+    log_warn "Empty API key supplied. Generating a local development key."
+    supplied_key=$(generate_dev_api_key)
   fi
 
   write_env_file "$supplied_key"
@@ -162,16 +310,39 @@ export API_KEY
 
 mkdir -p "$DATA_DIR"
 
-if command -v docker >/dev/null 2>&1; then
-  if docker compose version >/dev/null 2>&1; then
-    compose_cmd=(docker compose)
+ensure_docker
+
+if ! command -v docker >/dev/null 2>&1; then
+  log_error "Docker binary not found after installation."
+  exit 1
+fi
+
+DOCKER_PREFIX=()
+if [[ $(id -u) -ne 0 ]]; then
+  if id -nG "$(id -un)" 2>/dev/null | tr ' ' '\n' | grep -qx docker; then
+    :
+  elif [[ -n "$SUDO" ]]; then
+    DOCKER_PREFIX=("$SUDO")
   else
-    echo "[start] docker compose plugin is required." >&2
+    log_error "Current user is not in the docker group and sudo is unavailable."
     exit 1
   fi
-else
-  echo "[start] docker is required to run the stack." >&2
+fi
+
+if ! "${DOCKER_PREFIX[@]}" docker compose version >/dev/null 2>&1; then
+  log_error "docker compose plugin is required."
   exit 1
+fi
+
+compose_cmd=("${DOCKER_PREFIX[@]}" docker compose)
+
+if ! "${DOCKER_PREFIX[@]}" docker info >/dev/null 2>&1; then
+  log_warn "Docker daemon is not responding. Attempting to start the service."
+  ensure_docker_running
+  if ! "${DOCKER_PREFIX[@]}" docker info >/dev/null 2>&1; then
+    log_error "Unable to communicate with the Docker daemon."
+    exit 1
+  fi
 fi
 
 compose_args=("-f" "$COMPOSE_FILE" "up")
