@@ -1,9 +1,5 @@
-pytest
-pytest-httpx
-fakeredis
-responses
-prometheus-client
 fastapi
+uvicorn[standard]
 httpx
 pydantic
 pydantic-settings

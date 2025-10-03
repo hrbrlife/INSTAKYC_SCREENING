@@ -1,15 +1,75 @@
 # InstaKYC Screening
 
 ## Project overview
-InstaKYC Screening is a proof-of-concept stack that aims to unify sanctions
-lookups, blockchain risk checks, and open-web adverse media triage under a
-single API gateway. The current repository provides Docker assets, a FastAPI
-proxy, and lightweight stubs that mimic the external services the gateway would
-call. It does **not** contain production-ready data pipelines or scraping logic
-— the project is at an early prototyping stage.
+InstaKYC Screening ships an MVP screening server that can be deployed with a
+single API key. The consolidated FastAPI service orchestrates three workflows
+out of the box:
 
-## Current architecture
-The repository is organised around a docker-compose stack. Each service is
+- **Sanctions lookups** powered by the public OpenSanctions targets export.
+- **Open-web reputation checks** via DuckDuckGo's news vertical.
+- **Tron address profiling** using heuristics derived from the public
+  TronScan API.
+
+All components run inside one container, backed by a persistent data volume so
+that OpenSanctions data is cached between restarts. The legacy prototype stack
+is still available in the repository for reference, but the `screening_service`
+package now provides the simplest path to productionising the workflows.
+
+## ⚡️ MVP quickstart
+1. Provide a single API key (used for both deployment and request
+   authentication):
+   ```bash
+   ./scripts/bootstrap.sh my-super-secret-key
+   ```
+2. Boot the stack with Docker Compose. The service downloads the latest
+   OpenSanctions export on first start and then refreshes it every 12 hours.
+   ```bash
+   docker compose -f compose-mvp.yml up --build -d
+   ```
+3. Query the API with the same key supplied during bootstrapping:
+   ```bash
+   curl -H "X-API-Key: my-super-secret-key" \
+     -X POST http://localhost:8000/sanctions/search \
+     -H "Content-Type: application/json" \
+     -d '{"query": "John Smith"}'
+   ```
+
+### Available endpoints
+- `POST /sanctions/search` – fuzzy-match people and entities against the cached
+  OpenSanctions dataset.
+- `POST /web/reputation` – return the top DuckDuckGo News results for the
+  supplied query.
+- `POST /tron/reputation` – fetch TronScan account metadata and calculate a
+  deterministic risk score based on transaction activity and balances.
+- `GET /healthz` – expose lightweight service health, including sanctions
+  dataset statistics.
+
+### Tron reputation heuristics
+The Tron scoring model consumes the public `https://apilist.tronscanapi.com/api/account`
+endpoint and produces a deterministic risk label based on:
+
+- Total transaction count and recent activity snapshots supplied by TronScan.
+- Native TRX balance (converted from SUN) and large TRC-20 holdings.
+- Witness status, exchange permissions and whether the address is tagged by
+  TronScan.
+
+Scores below 30 are labelled **low** risk, 30–59 become **medium**, and 60+
+are classified as **high**. The raw TronScan payload is included in the JSON
+response for forensic follow-ups.
+
+### Sanctions dataset refresh strategy
+The `screening_service` downloads `targets.simple.csv` from the latest
+OpenSanctions release and caches it under `data/cache/`. The file is
+automatically refreshed every 12 hours. Delete the cache or call the `/healthz`
+endpoint to check when the data was last pulled.
+
+## Legacy prototype architecture
+The repository still contains the original docker-compose stack used during the
+early proof-of-concept phase. The sections below document that stack for
+historical reference, but new deployments should rely on the consolidated
+`screening_service`.
+
+Each service is
 expected to run on the same host and communicate over the default Docker
 network:
 
@@ -148,7 +208,10 @@ api_gateway/        FastAPI proxy application and container definition
 compose-sanctions.yml  Docker Compose stack wiring the services together
 docker/opensanctions/  Dockerfile and helper script for running zavod builds
 docker/puppeteer/   Puppeteer-based adverse media worker and maintenance scripts
+docker/screening_service/ Dockerfile for the consolidated MVP API
 docs/               Project planning notes and roadmap
+screening_service/  FastAPI app powering the MVP stack
+scripts/            Helper automation (bootstrap script)
 tests/              FastAPI and Puppeteer worker regression tests
 ```
 

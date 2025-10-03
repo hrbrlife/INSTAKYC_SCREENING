@@ -1,0 +1,17 @@
+services:
+  screening_api:
+    build:
+      context: .
+      dockerfile: docker/screening_service/Dockerfile
+    environment:
+      API_KEY: \${SCREENING_API_KEY:?Set SCREENING_API_KEY to bootstrap the stack}
+      DATA_DIR: /var/lib/screening
+    volumes:
+      - screening_data:/var/lib/screening
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  screening_data:
+    driver: local
