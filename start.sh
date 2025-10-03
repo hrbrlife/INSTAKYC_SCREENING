@@ -55,10 +55,8 @@ mkdir -p "$DATA_DIR"
 if command -v docker >/dev/null 2>&1; then
   if docker compose version >/dev/null 2>&1; then
     compose_cmd=(docker compose)
-  elif command -v docker-compose >/dev/null 2>&1; then
-    compose_cmd=(docker-compose)
   else
-    echo "[start] docker compose or docker-compose is required." >&2
+    echo "[start] docker compose plugin is required." >&2
     exit 1
   fi
 else

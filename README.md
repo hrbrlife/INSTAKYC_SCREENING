@@ -24,8 +24,7 @@ package now provides the simplest path to productionising the workflows.
    ```bash
    ./scripts/bootstrap.sh my-super-secret-key
    ```
-2. Boot the stack with Docker Compose (or `docker-compose` if the legacy
-   command is detected). The service downloads the latest OpenSanctions export
+2. Boot the stack with Docker Compose. The service downloads the latest OpenSanctions export
    on first start and then refreshes it every 12 hours.
    ```bash
    docker compose -f compose-mvp.yml up --build -d
@@ -96,7 +95,7 @@ between container restarts.
   preserved in the named volume).
 
 ## Legacy prototype architecture
-The repository still contains the original docker-compose stack used during the
+The repository still contains the original Docker Compose stack used during the
 early proof-of-concept phase. The sections below document that stack for
 historical reference, but new deployments should rely on the consolidated
 `screening_service`.
@@ -124,7 +123,7 @@ network:
   media search. Every request must include the `X-Service-Token` secret and the
   service publishes Prometheus metrics for scraping throughput. Maintenance
   scripts handle artefact retention and user-agent rotation hooks.
-- **`redis`** – Shared state for the task queue example. The compose stack now
+- **`redis`** – Shared state for the task queue example. The Compose stack now
   enables append-only persistence and sets a development password by default so
   the queue can be accessed safely when the port is published.
 
@@ -135,7 +134,7 @@ network:
 | Sanctions data | ⚠️ Incomplete | Compose expects a pre-built OpenSanctions export at `/data/export.tar.gz`. The repository only supplies a generic `zavod` Dockerfile and manual build script; no data is shipped or downloaded automatically. |
 | Blockchain screening | ❌ Missing critical pieces | GraphSense services require Cassandra, Spark ETL, and many terabytes of chain data. None of these dependencies or configuration steps are present, so the containers will fail immediately without manual provisioning. |
 | Open-web search | ⚠️ Limited | `puppeteer_srv` runs Puppeteer inside a queue-backed worker, storing sanitised HTML and full page screenshots per request. Calls now require a service token and expose Prometheus metrics, but proxy management and durable artefact storage still need to be integrated. |
-| Infrastructure automation | ❌ Not started | README references Ansible and hardened networking, but the repository only includes a single docker-compose file. There are no playbooks or security hardening assets. |
+| Infrastructure automation | ❌ Not started | README references Ansible and hardened networking, but the repository only includes a single Docker Compose file. There are no playbooks or security hardening assets. |
 | Monitoring & security | ⚠️ Partial | Scoped API keys, service tokens, Docker secrets, and Prometheus metrics are available. Centralised logging, alerting, and production secret storage are still pending. |
 
 Overall the repository demonstrates integration points but is far from a
@@ -146,7 +145,7 @@ service still requires significant engineering effort.
 ### Prerequisites
 - Python 3.11+
 - Node.js 18+ (for the Puppeteer worker service)
-- Docker (optional, required only if you want to experiment with the compose
+- Docker (optional, required only if you want to experiment with the Compose
   file knowing that several services will not run without additional data)
 
 ### Run the automated tests

@@ -26,7 +26,7 @@ import uuid
 class Settings(BaseSettings):
     """Runtime configuration for the API gateway.
 
-    Default values are aligned with the docker-compose stack so that
+    Default values are aligned with the Docker Compose stack so that
     the application can boot without manually exporting environment
     variables during development. They can be overridden via environment
     variables or a local ``.env`` file.
