@@ -36,12 +36,15 @@ Tasks are grouped by milestone so that progress can be tracked incrementally.
   cronfall-back are included in `docs/blockchain_strategy.md`.
 
 ## Milestone 4 – Open-web adverse media
-- [ ] Replace the Node stub with a browser automation service (Puppeteer, Playwright,
+- [x] Replace the Node stub with a browser automation service (Puppeteer, Playwright,
   or a managed alternative) capable of fetching search results and screenshots.
-- [ ] Introduce a real task queue/worker model so that scraping is resilient and
+- [x] Introduce a real task queue/worker model so that scraping is resilient and
   throughput can scale horizontally.
-- [ ] Capture artefacts (HTML, screenshots, summaries) in a location governed by
+- [x] Capture artefacts (HTML, screenshots, summaries) in a location governed by
   retention policies and add a sanitisation routine.
+
+The resulting workflow and operational guidance are documented in
+`docs/adverse_media_workflow.md`.
 
 ## Milestone 5 – Platform operations and security
 - [ ] Implement authentication and authorisation for every service exposed by
