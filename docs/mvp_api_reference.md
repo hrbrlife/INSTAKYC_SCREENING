@@ -12,7 +12,8 @@ the value supplied when running `./start.sh`.
   {
     "query": "Jane Doe",
     "limit": 5,
-    "min_score": 70
+    "min_score": 70,
+    "date_of_birth": "1980-01-01"
   }
   ```
 - **Response**:
@@ -27,13 +28,16 @@ the value supplied when running `./start.sh`.
         "score": 92,
         "datasets": ["ofac", "uk_hmt"],
         "topics": ["terrorism"],
-        "countries": ["GB"]
+        "countries": ["GB"],
+        "birth_dates": ["1980-01-01"]
       }
     ]
   }
   ```
 - **Notes**: The dataset is refreshed automatically every 12 hours and cached
-  under `data/cache/` (or the volume mounted into the container).
+  under `data/cache/` (or the mounted volume). When the download fails or the
+  cache is unavailable the endpoint will respond with `503 Service Unavailable`
+  until a fresh copy is retrieved.
 
 ## `POST /web/reputation`
 - **Purpose**: Return the top DuckDuckGo News articles for an entity or keyword.
@@ -60,7 +64,8 @@ the value supplied when running `./start.sh`.
   }
   ```
 - **Notes**: Safe-search is set to `moderate` by default. Results include the
-  fields returned by DuckDuckGo's news API.
+  fields returned by DuckDuckGo's news API. If DuckDuckGo cannot be reached a
+  `503 Service Unavailable` response is returned describing the upstream error.
 
 ## `POST /tron/reputation`
 - **Purpose**: Profile a Tron address using the public TronScan API and return a
@@ -99,6 +104,8 @@ the value supplied when running `./start.sh`.
 
 ## Error handling
 - Requests without the `X-API-Key` header return `401 Unauthorized`.
+- DuckDuckGo and OpenSanctions outages surface as `503 Service Unavailable`
+  responses that include a human-readable error message.
 - Upstream HTTP errors from the TronScan API are surfaced as `502 Bad Gateway`.
 - Validation errors (missing body fields, invalid address) return
   `400 Bad Request`.

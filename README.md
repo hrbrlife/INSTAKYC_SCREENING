@@ -38,7 +38,7 @@ package now provides the simplest path to productionising the workflows.
    curl -H "X-API-Key: my-super-secret-key" \
      -X POST http://localhost:8000/sanctions/search \
      -H "Content-Type: application/json" \
-     -d '{"query": "John Smith"}'
+     -d '{"query": "John Smith", "date_of_birth": "1970-03-17"}'
 
    curl -H "X-API-Key: my-super-secret-key" \
      -X POST http://localhost:8000/web/reputation \
@@ -53,7 +53,8 @@ package now provides the simplest path to productionising the workflows.
 
 ### Available endpoints
 - `POST /sanctions/search` – fuzzy-match people and entities against the cached
-  OpenSanctions dataset.
+  OpenSanctions dataset. Supply an optional ISO8601 `date_of_birth` to narrow
+  matches for common names.
 - `POST /web/reputation` – return the top DuckDuckGo News results for the
   supplied query.
 - `POST /tron/reputation` – fetch TronScan account metadata and calculate a
@@ -80,7 +81,9 @@ OpenSanctions release and caches it under `data/cache/`. The file is
 automatically refreshed every 12 hours. Delete the cache or call the `/healthz`
 endpoint to check when the data was last pulled. When running via Docker
 Compose, the service writes to the `screening_data` volume so refreshes persist
-between container restarts.
+between container restarts. If the download fails, sanctions lookups will
+respond with `503 Service Unavailable` until a fresh dataset is obtained so you
+never unknowingly query stale or missing data.
 
 ### Operational checklist
 
