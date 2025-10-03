@@ -6,8 +6,24 @@ import * as BullMQ from 'bullmq';
 import { randomUUID } from 'crypto';
 import puppeteer from 'puppeteer';
 import sanitizeHtml from 'sanitize-html';
+import { collectDefaultMetrics, Counter, Histogram, Registry } from 'prom-client';
 
-const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+function resolveSecret(envValue, filePath) {
+  if (envValue && envValue.trim()) {
+    return envValue.trim();
+  }
+  if (filePath && filePath.trim()) {
+    const resolvedPath = filePath.trim();
+    try {
+      return fs.readFileSync(resolvedPath, 'utf8').trim();
+    } catch (err) {
+      throw new Error(`Secret file ${resolvedPath} is not accessible`);
+    }
+  }
+  return undefined;
+}
+
+const redisUrl = resolveSecret(process.env.REDIS_URL, process.env.REDIS_URL_FILE) || 'redis://127.0.0.1:6379';
 const queueName = process.env.MEDIA_QUEUE_NAME || 'adverse-media-search';
 const headlessInput = (process.env.PUPPETEER_HEADLESS ?? 'true').toLowerCase();
 const headless = headlessInput !== 'false';
@@ -19,8 +35,30 @@ const retentionHours = parseInt(process.env.ARTIFACT_RETENTION_HOURS || '24', 10
 const defaultMaxArticles = parseInt(process.env.DEFAULT_MAX_ARTICLES || '5', 10);
 const userAgentFile = process.env.USER_AGENT_FILE || path.join(screenshotDir, 'user-agent.txt');
 const fakeMode = process.env.PUPPETEER_FAKE_MODE === '1';
+const defaultServiceToken = 'change_me_worker';
+const serviceToken = resolveSecret(process.env.SERVICE_TOKEN ?? defaultServiceToken, process.env.SERVICE_TOKEN_FILE);
+const serviceTokenHeader = process.env.SERVICE_TOKEN_HEADER || 'X-Service-Token';
+const allowAuthorizationHeader = (process.env.SERVICE_TOKEN_ALLOW_AUTHORIZATION || 'true').toLowerCase() === 'true';
 
 fs.mkdirSync(screenshotDir, { recursive: true });
+
+const metricsRegistry = new Registry();
+collectDefaultMetrics({ register: metricsRegistry, prefix: 'adverse_media_' });
+
+const httpRequestsTotal = new Counter({
+  name: 'adverse_media_http_requests_total',
+  help: 'Total HTTP requests processed by the adverse media service',
+  labelNames: ['method', 'route', 'status_code'],
+  registers: [metricsRegistry]
+});
+
+const httpRequestDurationSeconds = new Histogram({
+  name: 'adverse_media_http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route'],
+  buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+  registers: [metricsRegistry]
+});
 
 const sanitizeConfig = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat([
@@ -291,6 +329,38 @@ readiness
 const app = express();
 app.use(express.json({ limit: '32kb' }));
 
+app.use((req, res, next) => {
+  const end = httpRequestDurationSeconds.startTimer({ method: req.method, route: req.path });
+  res.on('finish', () => {
+    const route = req.route?.path || req.path;
+    httpRequestsTotal.labels(req.method, route, String(res.statusCode)).inc();
+    end({ method: req.method, route });
+  });
+  next();
+});
+
+app.use((req, res, next) => {
+  if (!serviceToken) {
+    return next();
+  }
+  const headerValue = req.get(serviceTokenHeader);
+  let candidate = headerValue ? headerValue.trim() : '';
+  if (!candidate && allowAuthorizationHeader) {
+    const authHeader = req.get('authorization');
+    if (authHeader) {
+      const value = authHeader.trim();
+      candidate = value.toLowerCase().startsWith('bearer ') ? value.slice(7).trim() : value;
+    }
+  }
+  if (!candidate) {
+    return res.status(401).json({ error: 'missing service token' });
+  }
+  if (candidate !== serviceToken) {
+    return res.status(403).json({ error: 'invalid service token' });
+  }
+  return next();
+});
+
 app.get('/healthz', async (_req, res) => {
   if (!ready) {
     return res.status(503).json({ status: 'initialising' });
@@ -368,6 +438,12 @@ app.get('/tasks/:id/artifacts/:type', (req, res) => {
   };
   res.setHeader('Content-Type', typeMap[req.params.type] || 'application/octet-stream');
   res.sendFile(filePath);
+});
+
+app.get('/metrics', async (_req, res) => {
+  const payload = await metricsRegistry.metrics();
+  res.setHeader('Content-Type', metricsRegistry.contentType);
+  res.send(payload);
 });
 
 const server = http.createServer(app);

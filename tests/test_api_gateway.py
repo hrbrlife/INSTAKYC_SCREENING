@@ -1,4 +1,5 @@
 import importlib
+import json
 import pathlib
 import sys
 
@@ -7,11 +8,27 @@ from fakeredis import aioredis as fakeredis
 from fastapi.testclient import TestClient
 
 
-def create_client(monkeypatch, httpx_mock):
+def create_client(monkeypatch, httpx_mock, api_keys=None):
+    if api_keys is None:
+        api_keys = {
+            "testkey": [
+                "sanctions:read",
+                "sanctions:search",
+                "sanctions:match",
+                "tasks:enqueue",
+                "tasks:read",
+                "crypto:read",
+                "web:read",
+                "metrics:read",
+            ]
+        }
     monkeypatch.setenv("SANCTIONS_URL", "http://sanctions")
     monkeypatch.setenv("CRYPTO_URL", "http://crypto")
     monkeypatch.setenv("WEB_URL", "http://web")
-    monkeypatch.setenv("API_KEY", "testkey")
+    if isinstance(api_keys, str):
+        monkeypatch.setenv("API_KEYS", api_keys)
+    else:
+        monkeypatch.setenv("API_KEYS", json.dumps(api_keys))
     monkeypatch.setenv("REDIS_URL", "redis://redis:6379/0")
 
     fake_redis = fakeredis.FakeRedis()
@@ -103,3 +120,31 @@ def test_auth_failure(monkeypatch, httpx_mock):
 
     resp = client.get("/crypto/health", headers={"X-API-KEY": "wrong"})
     assert resp.status_code == 401
+
+
+def test_scope_enforced(monkeypatch, httpx_mock):
+    client = create_client(monkeypatch, httpx_mock, api_keys={"limited": ["sanctions:read"]})
+    resp = client.get(
+        "/sanctions/search",
+        headers={"X-API-KEY": "limited"},
+        params={"q": "acme"},
+    )
+    assert resp.status_code == 403
+
+
+def test_metrics_requires_scope(monkeypatch, httpx_mock):
+    client = create_client(monkeypatch, httpx_mock)
+    resp = client.get("/metrics", headers={"X-API-KEY": "testkey"})
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/plain")
+
+    client = create_client(monkeypatch, httpx_mock, api_keys={"limited": ["web:read"]})
+    resp = client.get("/metrics", headers={"X-API-KEY": "limited"})
+    assert resp.status_code == 403
+
+
+def test_healthz_returns_ok(monkeypatch, httpx_mock):
+    client = create_client(monkeypatch, httpx_mock)
+    resp = client.get("/healthz")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}

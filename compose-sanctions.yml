@@ -49,7 +49,11 @@ services:
     shm_size: "1gb"
     environment:
       PUPPETEER_HEADLESS: "true"
-      REDIS_URL: redis://:${REDIS_PASSWORD:-devpass}@redis:6379/0
+      REDIS_URL_FILE: /run/secrets/redis_url
+      SERVICE_TOKEN_FILE: /run/secrets/puppeteer_service_token
+    secrets:
+      - redis_url
+      - puppeteer_service_token
 
   api_gateway:
     build: ./api_gateway
@@ -59,12 +63,17 @@ services:
       SANCTIONS_URL: http://sanctions_core:8000
       CRYPTO_URL: http://graphsense_api:8000
       WEB_URL: http://puppeteer_srv:7000
-      API_KEY: ${API_KEY:-change_me}
-      REDIS_URL: redis://:${REDIS_PASSWORD:-devpass}@redis:6379/0
+      API_KEYS_FILE: /run/secrets/api_gateway_keys
+      REDIS_URL_FILE: /run/secrets/redis_url
+      WEB_TOKEN_FILE: /run/secrets/puppeteer_service_token
     depends_on:
       - sanctions_core
       - graphsense_api
       - puppeteer_srv
+    secrets:
+      - api_gateway_keys
+      - redis_url
+      - puppeteer_service_token
 
   redis:
     image: redis:7
@@ -72,15 +81,26 @@ services:
       - "sh"
       - "-c"
     command: >-
+      REDIS_PASSWORD="$(cat /run/secrets/redis_password)";
       redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
-      ${REDIS_PASSWORD:+--requirepass "$REDIS_PASSWORD"}
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-devpass}
+      --requirepass "$REDIS_PASSWORD"
     volumes:
       - redis-data:/data
+    secrets:
+      - redis_password
 
 volumes:
   sanctions_data:
   es-data:
   keyspace-data:
   redis-data:
+
+secrets:
+  api_gateway_keys:
+    file: ./secrets/api_gateway_keys.example
+  redis_url:
+    file: ./secrets/redis_url.example
+  redis_password:
+    file: ./secrets/redis_password.example
+  puppeteer_service_token:
+    file: ./secrets/puppeteer_service_token.example

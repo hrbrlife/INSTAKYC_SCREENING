@@ -4,3 +4,4 @@ httpx
 pydantic
 pydantic-settings
 redis
+prometheus-client
