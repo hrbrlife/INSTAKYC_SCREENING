@@ -18,11 +18,11 @@ def ensure_node_modules():
     )
 
 
-def wait_for_server(base_url: str, timeout: float = 5.0):
+def wait_for_server(base_url: str, headers=None, timeout: float = 5.0):
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
-            resp = httpx.get(f"{base_url}/healthz", timeout=0.5)
+            resp = httpx.get(f"{base_url}/healthz", headers=headers, timeout=0.5)
             if resp.status_code in (200, 503):
                 if resp.status_code == 200:
                     return
@@ -32,10 +32,10 @@ def wait_for_server(base_url: str, timeout: float = 5.0):
     raise TimeoutError("service did not become ready")
 
 
-def wait_for_completion(job_id: str, base_url: str, timeout: float = 5.0):
+def wait_for_completion(job_id: str, base_url: str, headers=None, timeout: float = 5.0):
     deadline = time.time() + timeout
     while time.time() < deadline:
-        resp = httpx.get(f"{base_url}/tasks/{job_id}", timeout=2.0)
+        resp = httpx.get(f"{base_url}/tasks/{job_id}", headers=headers, timeout=2.0)
         if resp.status_code != 200:
             time.sleep(0.1)
             continue
@@ -56,6 +56,7 @@ def test_web_search_generates_artifacts(tmp_path):
         "WEBSHOT_DIR": str(webshot_dir),
         "PORT": "7010",
         "PUPPETEER_FAKE_MODE": "1",
+        "SERVICE_TOKEN": "test_worker_token",
     }
     ensure_node_modules()
     proc = subprocess.Popen(
@@ -65,12 +66,18 @@ def test_web_search_generates_artifacts(tmp_path):
         stderr=subprocess.PIPE,
     )
     base_url = "http://localhost:7010"
+    headers = {"X-Service-Token": "test_worker_token"}
     try:
-        wait_for_server(base_url)
-        submit = httpx.post(f"{base_url}/tasks", json={"query": "acme corp"}, timeout=2.0)
+        wait_for_server(base_url, headers=headers)
+        submit = httpx.post(
+            f"{base_url}/tasks",
+            json={"query": "acme corp"},
+            headers=headers,
+            timeout=2.0,
+        )
         assert submit.status_code == 202
         job_id = submit.json()["id"]
-        result = wait_for_completion(job_id, base_url)
+        result = wait_for_completion(job_id, base_url, headers=headers)
         assert result["result"]["query"] == "acme corp"
         artifacts = result["result"]["artifacts"]
         assert (webshot_dir / artifacts["html"]).exists()

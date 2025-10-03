@@ -40,11 +40,16 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
   && rm -rf /var/lib/apt/lists/*
 
+RUN groupadd --system puppeteer && useradd --system --gid puppeteer --home /app puppeteer
+
 ENV NODE_ENV=production
 
 COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY . .
+RUN chown -R puppeteer:puppeteer /app
+
+USER puppeteer
 
 CMD ["node", "server.js"]

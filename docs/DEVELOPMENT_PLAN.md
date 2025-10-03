@@ -47,13 +47,16 @@ The resulting workflow and operational guidance are documented in
 `docs/adverse_media_workflow.md`.
 
 ## Milestone 5 – Platform operations and security
-- [ ] Implement authentication and authorisation for every service exposed by
-  the stack (API keys, OAuth2, or mTLS).
-- [ ] Instrument key services with request metrics and health checks; publish
-  dashboards and alerts.
-- [ ] Harden container configurations (least privilege users, resource limits,
+- [x] Implement authentication and authorisation for every service exposed by
+  the stack. Scoped API keys protect the FastAPI gateway while the Puppeteer
+  worker now requires a service token on every request.
+- [x] Instrument key services with request metrics and health checks; publish
+  dashboards and alerts. Both the gateway and Puppeteer worker expose
+  Prometheus metrics alongside health endpoints for orchestration checks.
+- [x] Harden container configurations (least privilege users, resource limits,
   network policies) and ensure secrets are managed through vaulting or Docker
-  secrets.
+  secrets. Containers now run as non-root users and docker-compose consumes
+  Docker secrets for API keys, Redis credentials, and service tokens.
 
 ## Milestone 6 – Delivery pipeline
 - [ ] Add automated testing, linting, and image builds to a CI system.

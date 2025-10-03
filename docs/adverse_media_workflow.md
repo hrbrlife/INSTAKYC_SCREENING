@@ -29,10 +29,14 @@ The adverse media subsystem now consists of three cooperating components:
 
 - **Scaling** – Increase `SCRAPE_CONCURRENCY` to add more simultaneous browser pages.
   For horizontal scaling, run additional replicas pointing at the same Redis queue.
-- **Security** – Front the HTTP gateway with the FastAPI gateway or another
-  authentication layer. Artefacts are stored with predictable names that can be
-  synced to durable storage (S3, GCS) using standard tooling.
+- **Security** – Every HTTP call must include the `X-Service-Token` secret. The
+  FastAPI gateway injects this automatically, and Docker secrets make it easy to
+  rotate across environments. Artefacts are stored with predictable names that
+  can be synced to durable storage (S3, GCS) using standard tooling.
 - **Maintenance** – Schedule `npm run cleanup` (e.g. hourly) to enforce retention
   and `npm run rotate` to refresh the user-agent file when integrating proxy pools.
 - **Extensibility** – Swap `captureSearch` in `server.js` to target other search
   engines or perform article content scraping before writing the summary.
+- **Observability** – Scrape `GET /metrics` with Prometheus to collect request
+  rates, durations, and queue behaviour. `/healthz` indicates readiness for the
+  orchestration layer.
