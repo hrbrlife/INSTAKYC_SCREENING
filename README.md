@@ -26,9 +26,10 @@ network:
   images but does not provision Cassandra/Keyspace data or blockchain ETL jobs.
   The newly documented plan in `docs/blockchain_strategy.md` outlines the
   infrastructure and ETL work required to operationalise these services.
-- **`puppeteer_srv`** – Minimal Node.js HTTP server that writes a text artefact
-  for every `/search` request. It does not run a browser or capture screenshots.
-  Cleanup and proxy rotation scripts are simple placeholders.
+- **`puppeteer_srv`** – Queue-driven Puppeteer worker that captures Google News
+  results, sanitised HTML snapshots, and screenshots for each queued adverse
+  media search. Maintenance scripts handle artefact retention and user-agent
+  rotation hooks.
 - **`redis`** – Shared state for the task queue example. The compose stack now
   enables append-only persistence and sets a development password by default so
   the queue can be accessed safely when the port is published.
@@ -39,7 +40,7 @@ network:
 | API gateway | ✅ Prototype ready | FastAPI app boots when all environment variables are defined (`SANCTIONS_URL`, `CRYPTO_URL`, `WEB_URL`, `API_KEY`, `REDIS_URL`). Unit tests cover request forwarding and the Redis-backed queue mock. |
 | Sanctions data | ⚠️ Incomplete | Compose expects a pre-built OpenSanctions export at `/data/export.tar.gz`. The repository only supplies a generic `zavod` Dockerfile and manual build script; no data is shipped or downloaded automatically. |
 | Blockchain screening | ❌ Missing critical pieces | GraphSense services require Cassandra, Spark ETL, and many terabytes of chain data. None of these dependencies or configuration steps are present, so the containers will fail immediately without manual provisioning. |
-| Open-web search | ⚠️ Stub only | `puppeteer_srv` records the query to a text file and returns an empty result list. There is no headless browser, scraping logic, or summary generation. |
+| Open-web search | ⚠️ Limited | `puppeteer_srv` now runs Puppeteer inside a queue-backed worker, storing sanitised HTML and full page screenshots per request. Authentication, proxy management, and long-term artefact storage still need to be integrated. |
 | Infrastructure automation | ❌ Not started | README references Ansible and hardened networking, but the repository only includes a single docker-compose file. There are no playbooks or security hardening assets. |
 | Monitoring & security | ❌ Not started | No metrics, alerting, API rate limiting, or secret management is implemented. |
 
@@ -50,21 +51,21 @@ service still requires significant engineering effort.
 ## Getting started
 ### Prerequisites
 - Python 3.11+
-- Node.js 18+ (for the stub Puppeteer service)
+- Node.js 18+ (for the Puppeteer worker service)
 - Docker (optional, required only if you want to experiment with the compose
   file knowing that several services will not run without additional data)
 
 ### Run the automated tests
-The available tests exercise the FastAPI gateway and the placeholder Node
-service.
+The available tests exercise the FastAPI gateway and the Puppeteer worker
+(running in a mocked, memory-backed mode).
 
 ```sh
 pip install -r requirements-test.txt
 pytest
 ```
 
-The test suite starts a local instance of the Node stub; it does not touch the
-Docker services.
+The test suite starts a local instance of the Puppeteer worker (with a memory
+queue and fake artefact mode) and does not touch the Docker services.
 
 ### Running the services locally
 1. The FastAPI gateway ships with sensible defaults so it can boot with no
@@ -110,8 +111,9 @@ Docker services.
 ### What currently works
 - `/tasks` creates ephemeral queue items in Redis. Because Redis now persists to
   disk you can restart the service without losing recently enqueued tasks.
-- `/web/search` proxies to the Node stub, which writes a text artefact for each
-  request.
+- `/web/search` proxies to the Puppeteer worker queue. Each request is executed
+  via headless Chromium, producing sanitised HTML, a JSON summary, and a
+  full-page screenshot stored under `WEBSHOT_DIR`.
 - `python -m sanctions_pipeline.build` automates the creation of the
   `export.tar.gz` artefact that powers the sanctions service. Use
   `python -m sanctions_pipeline.validate` to run the end-to-end smoke tests once
@@ -123,16 +125,18 @@ Docker services.
 - `graphsense_api`/`graphsense_ingest` require Cassandra and Spark clusters that
   are **not** provisioned by this repository. The containers will stay in a
   crash loop until those dependencies are provided or the service is replaced.
-- The Puppeteer stub does not launch a browser; it only echoes queries to disk.
+- The Puppeteer worker currently targets Google News headlines only and expects
+  outbound internet access. Persisting artefacts beyond the local filesystem is
+  left to future milestones.
 
 ## Directory layout
 ```
 api_gateway/        FastAPI proxy application and container definition
 compose-sanctions.yml  Docker Compose stack wiring the services together
 docker/opensanctions/  Dockerfile and helper script for running zavod builds
-docker/puppeteer/   Node.js stub service plus cleanup utilities
+docker/puppeteer/   Puppeteer-based adverse media worker and maintenance scripts
 docs/               Project planning notes and roadmap
-tests/              FastAPI and Node stub regression tests
+tests/              FastAPI and Puppeteer worker regression tests
 ```
 
 ## Contributing & next steps
@@ -143,8 +147,8 @@ If you plan to continue the project, prioritise the following tasks:
 2. Follow the blockchain rollout blueprint in `docs/blockchain_strategy.md`
    before attempting to run GraphSense locally. Provision Cassandra, schedule
    the Prefect ETL, and wire the API gateway once data is available.
-3. Replace the Node stub with a real scraping worker and design a task queue
-   that can handle browser automation safely.
+3. Harden the new adverse media workflow with authentication, proxy rotation,
+   and durable artefact archiving.
 4. Add observability, security controls, and documentation for operating the
    system in production.
 
