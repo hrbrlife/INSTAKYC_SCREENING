@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
+import logging
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, status
@@ -8,21 +10,23 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from .config import get_settings
-from .sanctions import SanctionsRepository
+from .sanctions import SanctionsDatasetUnavailable, SanctionsRepository
 from .tron import TronReputationClient
-from .web_reputation import WebReputationService
+from .web_reputation import WebReputationError, WebReputationService
 
 settings = get_settings()
 sanctions_repo = SanctionsRepository(settings)
 web_reputation = WebReputationService(settings)
 tron_client = TronReputationClient(settings)
 app = FastAPI(title="InstaKYC Screening MVP")
+logger = logging.getLogger(__name__)
 
 
 class SanctionsQuery(BaseModel):
     query: str
     limit: int = Field(default=5, ge=1, le=20)
     min_score: int = Field(default=70, ge=1, le=100)
+    date_of_birth: dt.date | None = None
 
 
 class WebQuery(BaseModel):
@@ -40,7 +44,10 @@ async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> Non
 
 @app.on_event("startup")
 async def startup() -> None:
-    await asyncio.to_thread(sanctions_repo.ensure_loaded)
+    try:
+        await asyncio.to_thread(sanctions_repo.ensure_loaded)
+    except SanctionsDatasetUnavailable as exc:
+        logger.warning("Sanctions dataset unavailable during startup: %s", exc)
 
 
 @app.get("/healthz")
@@ -53,15 +60,24 @@ async def health() -> dict:
 
 @app.post("/sanctions/search")
 async def sanctions_search(payload: SanctionsQuery, _: None = Depends(verify_api_key)) -> dict:
-    matches = sanctions_repo.search(
-        payload.query, limit=payload.limit, min_score=payload.min_score
-    )
+    try:
+        matches = sanctions_repo.search(
+            payload.query,
+            limit=payload.limit,
+            min_score=payload.min_score,
+            date_of_birth=payload.date_of_birth,
+        )
+    except SanctionsDatasetUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     return {"query": payload.query, "count": len(matches), "matches": matches}
 
 
 @app.post("/web/reputation")
 async def web_reputation_search(payload: WebQuery, _: None = Depends(verify_api_key)) -> dict:
-    results = web_reputation.search(payload.query)
+    try:
+        results = web_reputation.search(payload.query)
+    except WebReputationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     return {
         "query": payload.query,
         "count": len(results),
