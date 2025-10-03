@@ -8,7 +8,10 @@ DATA_DIR="data/cache"
 ensure_api_key() {
   local supplied_key=""
   local explicit_override=false
-  if [[ -n "${START_API_KEY:-}" ]]; then
+  if [[ -n "${CLI_API_KEY:-}" ]]; then
+    supplied_key="${CLI_API_KEY}"
+    explicit_override=true
+  elif [[ -n "${START_API_KEY:-}" ]]; then
     supplied_key="${START_API_KEY}"
     explicit_override=true
   elif [[ -n "${SCREENING_API_KEY:-}" ]]; then
@@ -85,31 +88,50 @@ write_env_file() {
 
 usage() {
   cat <<'USAGE'
-Usage: ./start.sh [--build]
+Usage: ./start.sh [--build] [--api-key <key>]
 
 Builds (optional) and starts the InstaKYC Screening MVP stack using Docker Compose.
 Pass --build to force a container rebuild before starting.
+Provide the screening API key with --api-key when running in non-interactive environments.
 The script writes/updates .env as needed and will prompt for the API key unless
-START_API_KEY, SCREENING_API_KEY or API_KEY are already set in the environment.
+an API key is supplied via --api-key or the START_API_KEY, SCREENING_API_KEY or API_KEY
+environment variables.
 USAGE
 }
 
-if [[ ${1-} == "-h" || ${1-} == "--help" ]]; then
-  usage
-  exit 0
-fi
-
+CLI_API_KEY=""
 rebuild=false
-if [[ ${1-} == "--build" ]]; then
-  rebuild=true
-  shift || true
-fi
 
-if [[ $# -gt 0 ]]; then
-  echo "[start] Unexpected arguments: $*" >&2
-  usage >&2
-  exit 1
-fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --build)
+      rebuild=true
+      shift
+      ;;
+    --api-key)
+      if [[ $# -lt 2 ]]; then
+        echo "[start] --api-key requires a value." >&2
+        usage >&2
+        exit 1
+      fi
+      CLI_API_KEY="$2"
+      shift 2
+      ;;
+    --api-key=*)
+      CLI_API_KEY="${1#*=}"
+      shift
+      ;;
+    *)
+      echo "[start] Unexpected arguments: $*" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
 
 if [[ ! -f "$COMPOSE_FILE" ]]; then
   echo "[start] Cannot find $COMPOSE_FILE. Run the script from the repository root." >&2
