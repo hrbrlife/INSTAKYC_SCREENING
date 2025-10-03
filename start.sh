@@ -5,12 +5,92 @@ COMPOSE_FILE="compose-mvp.yml"
 ENV_FILE=".env"
 DATA_DIR="data/cache"
 
+ensure_api_key() {
+  local supplied_key=""
+  local explicit_override=false
+  if [[ -n "${START_API_KEY:-}" ]]; then
+    supplied_key="${START_API_KEY}"
+    explicit_override=true
+  elif [[ -n "${SCREENING_API_KEY:-}" ]]; then
+    supplied_key="${SCREENING_API_KEY}"
+  elif [[ -n "${API_KEY:-}" ]]; then
+    supplied_key="${API_KEY}"
+  fi
+
+  if [[ -f "$ENV_FILE" ]]; then
+    local existing_key=""
+    existing_key=$(grep -E '^SCREENING_API_KEY=' "$ENV_FILE" 2>/dev/null | tail -n1 | cut -d= -f2- || true)
+    if [[ -z "$existing_key" || "$existing_key" == "replace-with-your-api-key" ]]; then
+      existing_key=$(grep -E '^API_KEY=' "$ENV_FILE" 2>/dev/null | tail -n1 | cut -d= -f2- || true)
+    fi
+
+    if [[ -n "$existing_key" && "$existing_key" != "replace-with-your-api-key" ]]; then
+      if [[ "$explicit_override" == true ]]; then
+        if [[ "$supplied_key" != "$existing_key" ]]; then
+          write_env_file "$supplied_key"
+          echo "$supplied_key"
+          return
+        fi
+        existing_key="$supplied_key"
+      fi
+
+      local api_key_line
+      api_key_line=$(grep -E '^API_KEY=' "$ENV_FILE" 2>/dev/null | tail -n1 | cut -d= -f2- || true)
+      if [[ -z "$api_key_line" || "$api_key_line" != "$existing_key" ]]; then
+        write_env_file "$existing_key"
+      fi
+      echo "$existing_key"
+      return
+    fi
+  fi
+
+  if [[ -z "$supplied_key" ]]; then
+    if [[ -t 0 ]]; then
+      read -rsp "Enter API key for the screening service: " supplied_key
+      echo
+    else
+      echo "[start] SCREENING_API_KEY is required. Provide it via START_API_KEY, SCREENING_API_KEY or API_KEY environment variables." >&2
+      exit 1
+    fi
+  fi
+
+  if [[ -z "$supplied_key" ]]; then
+    echo "[start] API key cannot be empty." >&2
+    exit 1
+  fi
+
+  write_env_file "$supplied_key"
+  echo "$supplied_key"
+}
+
+write_env_file() {
+  local key="$1"
+
+  if [[ -f "$ENV_FILE" ]]; then
+    local backup="${ENV_FILE}.bak.$(date +%s)"
+    cp "$ENV_FILE" "$backup"
+    echo "[start] Existing $ENV_FILE detected. A backup was written to $backup" >&2
+  fi
+
+  local tmp
+  tmp=$(mktemp)
+  if [[ -f "$ENV_FILE" ]]; then
+    { grep -Ev '^(SCREENING_API_KEY|API_KEY)=' "$ENV_FILE" 2>/dev/null || true; } >>"$tmp"
+  fi
+  printf 'SCREENING_API_KEY=%s\nAPI_KEY=%s\n' "$key" "$key" >>"$tmp"
+  mv "$tmp" "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+  echo "[start] Environment written to $ENV_FILE"
+}
+
 usage() {
-  cat <<USAGE
+  cat <<'USAGE'
 Usage: ./start.sh [--build]
 
 Builds (optional) and starts the InstaKYC Screening MVP stack using Docker Compose.
 Pass --build to force a container rebuild before starting.
+The script writes/updates .env as needed and will prompt for the API key unless
+START_API_KEY, SCREENING_API_KEY or API_KEY are already set in the environment.
 USAGE
 }
 
@@ -36,8 +116,10 @@ if [[ ! -f "$COMPOSE_FILE" ]]; then
   exit 1
 fi
 
+api_key_value=$(ensure_api_key)
+
 if [[ ! -f "$ENV_FILE" ]]; then
-  echo "[start] Missing $ENV_FILE. Copy .env.example and update the values before starting." >&2
+  echo "[start] Failed to create $ENV_FILE." >&2
   exit 1
 fi
 
@@ -46,9 +128,15 @@ source "$ENV_FILE"
 set +o allexport
 
 if [[ -z "${SCREENING_API_KEY:-}" ]]; then
-  echo "[start] SCREENING_API_KEY is not set in $ENV_FILE." >&2
-  exit 1
+  SCREENING_API_KEY="$api_key_value"
 fi
+
+if [[ -z "${API_KEY:-}" ]]; then
+  API_KEY="$api_key_value"
+fi
+
+export SCREENING_API_KEY
+export API_KEY
 
 mkdir -p "$DATA_DIR"
 
