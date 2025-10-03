@@ -86,11 +86,36 @@ Docker services.
 3. Interact with the API gateway using the `X-API-KEY` header (defaults to
    `change_me` when running via Docker Compose).
 
+4. Build the sanctions dataset before relying on the Yente API. A helper CLI is
+   bundled with the repository:
+
+   ```sh
+   python -m sanctions_pipeline.build --dataset sanctions --export-path data/opensanctions/export.tar.gz
+   ```
+
+   The command downloads/crawls the OpenSanctions data and writes an
+   `export.tar.gz` archive at `data/opensanctions/`. Mount the same directory as
+   the `sanctions_data` volume when running Docker Compose so that the Yente
+   container can load it.
+
+5. Once the archive has been mounted run the smoke tests to confirm that Yente
+   is responding as expected:
+
+   ```sh
+   python -m sanctions_pipeline.validate http://localhost:8001 --search-query "John Smith"
+   ```
+
+   Supply `--api-key` if the upstream instance enforces authentication.
+
 ### What currently works
 - `/tasks` creates ephemeral queue items in Redis. Because Redis now persists to
   disk you can restart the service without losing recently enqueued tasks.
 - `/web/search` proxies to the Node stub, which writes a text artefact for each
   request.
+- `python -m sanctions_pipeline.build` automates the creation of the
+  `export.tar.gz` artefact that powers the sanctions service. Use
+  `python -m sanctions_pipeline.validate` to run the end-to-end smoke tests once
+  the archive has been deployed to `sanctions_core`.
 
 ### Known limitations when running the stack
 - `sanctions_core` still expects an OpenSanctions export at `/data/export.tar.gz`

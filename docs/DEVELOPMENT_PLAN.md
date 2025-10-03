@@ -15,12 +15,13 @@ Tasks are grouped by milestone so that progress can be tracked incrementally.
   for unimplemented services.
 
 ## Milestone 2 – Sanctions data ingestion
-- [ ] Confirm the desired OpenSanctions subset and the storage capacity
-  available for exported datasets.
-- [ ] Automate `zavod` execution (cron, CI job, or manual playbook) and publish
-  the resulting archive to the volume mounted by `sanctions_core`.
-- [ ] Validate the `yente` API by smoke-testing `/entities/{id}`, `/search`, and
-  `/match` endpoints.
+- [x] Confirm the desired OpenSanctions subset and the storage capacity
+  available for exported datasets. Documented in `docs/sanctions_ingestion.md`.
+- [x] Automate `zavod` execution (cron, CI job, or manual playbook) and publish
+  the resulting archive to the volume mounted by `sanctions_core` via the
+  `sanctions_pipeline.build` helper.
+- [x] Validate the `yente` API by smoke-testing `/entities/{id}`, `/search`, and
+  `/match` endpoints using the `sanctions_pipeline.validate` CLI.
 
 ## Milestone 3 – Blockchain screening strategy
 - [ ] Determine whether GraphSense is still the preferred stack given the
