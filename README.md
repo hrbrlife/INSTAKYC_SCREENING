@@ -17,11 +17,12 @@ package now provides the simplest path to productionising the workflows.
 
 ## ⚡️ MVP quickstart
 1. Launch the stack with the provided helper script. On the first run it will
-   prompt for the single API key (or honour the `START_API_KEY`,
-   `SCREENING_API_KEY`, or `API_KEY` environment variables), write the `.env`
-   file, ensure the dataset cache directory exists, and start Docker Compose:
+   prompt for the single API key (or honour the `--api-key` option or the
+   `START_API_KEY`, `SCREENING_API_KEY`, or `API_KEY` environment variables),
+   write the `.env` file, ensure the dataset cache directory exists, and start
+   Docker Compose:
    ```bash
-   ./start.sh --build
+   ./start.sh --build [--api-key "my-super-secret-key"]
    ```
    > The initial run performs a compose build. Subsequent invocations can drop
    > the `--build` flag to reuse the existing image.
@@ -29,7 +30,7 @@ package now provides the simplest path to productionising the workflows.
    > The container ships with a built-in health check that polls
    > `http://localhost:8000/healthz`. Use `docker compose ps` to confirm that
    > the container is reported as `healthy` before sending requests.
-2. Query the API with the same key supplied during bootstrapping. Below are
+2. Query the API with the same key supplied during startup. Below are
    examples for each workflow shipped with the MVP server. Refer to
    [`docs/mvp_operations.md`](docs/mvp_operations.md) for day-two operational
    guidance.
@@ -91,6 +92,104 @@ between container restarts.
 - Exercise the workflows using the curl snippets above.
 - Stop the stack when finished: `docker compose down` (the cached data is
   preserved in the named volume).
+
+## Debian 12 deployment runbook
+
+The steps below take a clean Debian 12 "bookworm" host from zero to a running
+InstaKYC Screening service. Substitute your own non-root user where required
+and ensure the user belongs to the `docker` group if you do not want to prefix
+commands with `sudo`.
+
+### 1. Install Docker Engine and Compose
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg \
+  | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/debian bookworm stable" \
+  | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io \
+  docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable --now docker
+```
+
+Verify the installation:
+
+```bash
+docker --version
+docker compose version
+```
+
+### 2. Clone the repository and start the stack
+
+```bash
+git clone https://github.com/hrbrlife/INSTAKYC_SCREENING.git
+cd INSTAKYC_SCREENING
+./start.sh --build --api-key "your-api-key"
+```
+
+`start.sh` writes `.env` with mode `600` (ensuring the API key stays private),
+creates the persistent dataset cache directory at `data/cache/`, checks for the
+Docker Compose plugin, and then launches the container. Omit `--api-key` to be
+prompted interactively.
+
+### 3. Monitor the health probe before issuing requests
+
+```bash
+docker compose -f compose-mvp.yml ps
+# wait for the screening_api service to report "healthy"
+curl http://localhost:8000/healthz
+```
+
+A healthy response resembles the following (record counts will vary as the
+OpenSanctions dataset evolves):
+
+```json
+{
+  "status": "ok",
+  "sanctions": {
+    "records": 100000,
+    "last_loaded": "2024-02-05T08:20:17.654321+00:00"
+  }
+}
+```
+
+### 4. Confirm the OpenSanctions cache persists across restarts
+
+The sanctions export is cached in `data/cache/targets.simple.csv` on the host via
+the `screening_data` volume. To verify persistence:
+
+```bash
+ls -lh data/cache/targets.simple.csv
+docker compose -f compose-mvp.yml down
+docker compose -f compose-mvp.yml up -d
+ls -lh data/cache/targets.simple.csv
+```
+
+The file size and modification timestamp should remain unchanged on restart if
+the cache is still fresh (downloads occur only when the cached copy is older
+than the 12-hour refresh window). If a refresh is required the service will
+download a new copy automatically after coming back online.
+
+### 5. Interact with the API
+
+Use the single API key supplied during startup when calling any endpoint.
+Example requests are provided in the MVP quickstart section above.
+
+### 6. Security and exposure considerations
+
+- `.env` stores the API key and is only readable by its owner (mode `600`). Do
+  not relax the permissions when running on shared hosts.
+- The FastAPI service listens on TCP port `8000`. When deploying to a public
+  server front it with a reverse proxy or restrict inbound traffic using the
+  host firewall if wider exposure is not required.
+- Rotate the API key by re-running `./start.sh --api-key "new-key"` (or setting
+  `START_API_KEY`/`SCREENING_API_KEY`) and restarting the container.
 
 ## Legacy prototype architecture
 The repository still contains the original Docker Compose stack used during the
