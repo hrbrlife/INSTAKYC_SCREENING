@@ -5,13 +5,13 @@ to transform the proof of concept into a usable compliance screening platform.
 Tasks are grouped by milestone so that progress can be tracked incrementally.
 
 ## Milestone 1 – Stabilise the existing prototype
-- [ ] Provide default environment variable handling for the API gateway so it
+- [x] Provide default environment variable handling for the API gateway so it
   can start without manual `.env` injection during development.
-- [ ] Containerise Redis persistence and add basic authentication if the queue
+- [x] Containerise Redis persistence and add basic authentication if the queue
   is exposed outside the Docker network.
-- [ ] Decide whether the `traefik` service should remain (and add routing/TLS)
-  or remove it to reduce confusion at this stage.
-- [ ] Document how to run the stack end-to-end, including expected failure modes
+- [x] Remove the placeholder `traefik` proxy to reduce confusion until routing
+  and TLS requirements are defined.
+- [x] Document how to run the stack end-to-end, including expected failure modes
   for unimplemented services.
 
 ## Milestone 2 – Sanctions data ingestion

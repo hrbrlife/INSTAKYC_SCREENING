@@ -1,19 +1,36 @@
+from functools import lru_cache
+
 from fastapi import Depends, FastAPI, Header, HTTPException
 import httpx
 import redis.asyncio as redis
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 import uuid
 
 
 class Settings(BaseSettings):
-    sanctions_url: str
-    crypto_url: str
-    web_url: str
-    api_key: str
-    redis_url: str
+    """Runtime configuration for the API gateway.
+
+    Default values are aligned with the docker-compose stack so that
+    the application can boot without manually exporting environment
+    variables during development. They can be overridden via environment
+    variables or a local ``.env`` file.
+    """
+
+    model_config = SettingsConfigDict(env_file=(".env", ".env.local"), extra="ignore")
+
+    sanctions_url: str = "http://sanctions_core:8000"
+    crypto_url: str = "http://graphsense_api:8000"
+    web_url: str = "http://puppeteer_srv:7000"
+    api_key: str = "change_me"
+    redis_url: str = "redis://localhost:6379/0"
 
 
-settings = Settings()
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    return Settings()
+
+
+settings = get_settings()
 app = FastAPI(title="API Gateway")
 redis_client = redis.from_url(settings.redis_url, decode_responses=True)
 

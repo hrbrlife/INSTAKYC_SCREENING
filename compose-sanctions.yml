@@ -49,16 +49,18 @@ services:
     shm_size: "1gb"
     environment:
       PUPPETEER_HEADLESS: "true"
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD:-devpass}@redis:6379/0
 
   api_gateway:
     build: ./api_gateway
+    ports:
+      - "8000:8000"
     environment:
       SANCTIONS_URL: http://sanctions_core:8000
       CRYPTO_URL: http://graphsense_api:8000
       WEB_URL: http://puppeteer_srv:7000
       API_KEY: ${API_KEY:-change_me}
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD:-devpass}@redis:6379/0
     depends_on:
       - sanctions_core
       - graphsense_api
@@ -66,24 +68,19 @@ services:
 
   redis:
     image: redis:7
-    command:
-      - "redis-server"
-      - "--maxmemory"
-      - "256mb"
-      - "--maxmemory-policy"
-      - "allkeys-lru"
-
-  traefik:
-    image: traefik:v2.10
-    command:
-      - --providers.docker=true
-      - --entrypoints.web.address=:80
-    ports:
-      - "80:80"
-    depends_on:
-      - api_gateway
+    entrypoint:
+      - "sh"
+      - "-c"
+    command: >-
+      redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+      ${REDIS_PASSWORD:+--requirepass "$REDIS_PASSWORD"}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-devpass}
+    volumes:
+      - redis-data:/data
 
 volumes:
   sanctions_data:
   es-data:
   keyspace-data:
+  redis-data:
