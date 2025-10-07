@@ -94,12 +94,35 @@ async def tron_reputation_lookup(payload: TronQuery, _: None = Depends(verify_ap
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    def _is_sensitive(key: str) -> bool:
+        lowered = key.lower()
+        return any(token in lowered for token in {"private", "secret", "seed", "mnemonic", "password"})
+
+    def _sanitize_raw(raw: dict[str, object]) -> dict[str, object]:
+        sanitized: dict[str, object] = {}
+        for key, value in raw.items():
+            if _is_sensitive(key):
+                continue
+            if isinstance(value, dict):
+                sanitized[key] = _sanitize_raw(value)
+            elif isinstance(value, list):
+                sanitized[key] = [
+                    _sanitize_raw(item)
+                    if isinstance(item, dict)
+                    else item
+                    for item in value
+                ]
+            else:
+                sanitized[key] = value
+        return sanitized
+
     body = {
         "address": reputation.address,
         "risk": reputation.risk,
         "score": reputation.score,
         "reasons": reputation.reasons,
         "stats": reputation.stats,
+        "raw": _sanitize_raw(reputation.raw),
     }
     return JSONResponse(content=body)
 
