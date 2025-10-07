@@ -92,11 +92,19 @@ the value supplied when running `./start.sh`.
       "recent_in": 5,
       "recent_out": 10,
       "trc20_tokens": 2
+    },
+    "raw": {
+      "totalTransactionCount": 1200,
+      "balance": "250000000000",
+      "transactions_in": [...],
+      "transactions_out": [...],
+      "trc20token_balances": [...]
     }
   }
   ```
-- **Notes**: The raw TronScan payload is included in the response for forensic
-  follow-ups, and HTTP timeouts are capped at 12 seconds by default.
+- **Notes**: The raw TronScan payload is returned under `raw` with sensitive
+  fields (such as private keys or secrets) removed to avoid leaking credentials.
+  HTTP timeouts are capped at 12 seconds by default.
 
 ## Health endpoint
 - **`GET /healthz`** returns service status along with the sanctions dataset

@@ -249,6 +249,8 @@ def test_tron_reputation(client):
             "transactions_in": [{}] * 5,
             "transactions_out": [{}] * 10,
             "trc20token_balances": [{"amount": 150000}],
+            "privateKey": "super-secret",
+            "ownerPermission": {"keys": [{"address": "abc", "privateKey": "hidden"}]},
         },
     )
     response = client.post(
@@ -260,6 +262,10 @@ def test_tron_reputation(client):
     data = response.json()
     assert data["risk"] == "medium"
     assert data["stats"]["transaction_count"] == 1200
+    assert data["raw"]["totalTransactionCount"] == 1200
+    assert "privateKey" not in data["raw"]
+    assert data["raw"]["ownerPermission"]["keys"][0]["address"] == "abc"
+    assert "privateKey" not in data["raw"]["ownerPermission"]["keys"][0]
 
 
 def test_sanctions_search_filters_by_dob(monkeypatch, httpx_mock, tmp_path):
