@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import logging
+from dataclasses import asdict
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, status
@@ -81,7 +82,7 @@ async def web_reputation_search(payload: WebQuery, _: None = Depends(verify_api_
     return {
         "query": payload.query,
         "count": len(results),
-        "results": [result.__dict__ for result in results],
+        "results": [asdict(result) for result in results],
     }
 
 

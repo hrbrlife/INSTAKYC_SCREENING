@@ -44,6 +44,10 @@ class Settings(BaseSettings):
         description="Safe search level for DuckDuckGo",
     )
     web_search_limit: int = Field(default=6, description="Maximum news results to fetch")
+    web_artifact_dir: Path = Field(
+        default=Path(__file__).resolve().parents[1] / "data" / "web",
+        description="Directory used to store web reputation artefacts",
+    )
     tron_account_url: HttpUrl = Field(
         default="https://apilist.tronscanapi.com/api/account",
         description="Public TronScan API endpoint used for address profiling",
@@ -65,4 +69,5 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     settings = Settings()
     settings.data_dir.mkdir(parents=True, exist_ok=True)
+    settings.web_artifact_dir.mkdir(parents=True, exist_ok=True)
     return settings
