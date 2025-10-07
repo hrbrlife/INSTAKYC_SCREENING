@@ -58,14 +58,36 @@ the value supplied when running `./start.sh`.
         "url": "https://example.com/story",
         "published": "2024-01-02T08:00:00Z",
         "source": "Example News",
-        "snippet": "The company announced..."
+        "snippet": "The company announced...",
+        "html": {
+          "path": "20240515/120102_acme-expands-into-new-markets_ab12cd34.html",
+          "absolute_path": "/app/data/web/20240515/120102_acme-expands-into-new-markets_ab12cd34.html",
+          "content_type": "text/html",
+          "size_bytes": 10428
+        },
+        "text": {
+          "path": "20240515/120102_acme-expands-into-new-markets_ab12cd34.txt",
+          "absolute_path": "/app/data/web/20240515/120102_acme-expands-into-new-markets_ab12cd34.txt",
+          "content_type": "text/plain",
+          "size_bytes": 2580
+        },
+        "screenshot": {
+          "path": "20240515/120102_acme-expands-into-new-markets_ab12cd34.png",
+          "absolute_path": "/app/data/web/20240515/120102_acme-expands-into-new-markets_ab12cd34.png",
+          "content_type": "image/png",
+          "size_bytes": 52312
+        }
       }
     ]
   }
   ```
 - **Notes**: Safe-search is set to `moderate` by default. Results include the
-  fields returned by DuckDuckGo's news API. If DuckDuckGo cannot be reached a
-  `503 Service Unavailable` response is returned describing the upstream error.
+  fields returned by DuckDuckGo's news API and, when retrieval succeeds, the
+  artefact metadata for the sanitised HTML snapshot, extracted plain-text
+  summary, and captured screenshot. The `path` field is relative to the
+  configured `WEB_ARTIFACT_DIR`, allowing downstream services to expose the
+  files via HTTP if required. If DuckDuckGo cannot be reached a `503 Service
+  Unavailable` response is returned describing the upstream error.
 
 ## `POST /tron/reputation`
 - **Purpose**: Profile a Tron address using the public TronScan API and return a

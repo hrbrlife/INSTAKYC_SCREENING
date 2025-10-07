@@ -4,7 +4,6 @@ import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Iterable, Optional
 
 import httpx
@@ -30,6 +29,7 @@ class _QueuedResponse:
     content: bytes
     json_data: Optional[object]
     url: str
+    headers: Optional[dict] = None
 
     def raise_for_status(self) -> None:
         if 400 <= self.status_code:
@@ -59,6 +59,7 @@ class _HttpxMock:
         text: Optional[str] = None,
         json: Optional[object] = None,
         status_code: int = 200,
+        headers: Optional[dict] = None,
     ) -> None:
         if text is not None and json is not None:
             raise ValueError("Specify either text or json, not both")
@@ -77,6 +78,7 @@ class _HttpxMock:
                 content=content,
                 json_data=json_data,
                 url=url,
+                headers=headers,
             )
         )
 
@@ -125,6 +127,7 @@ class _FakeResponse:
         self._queued = queued
         self.status_code = queued.status_code
         self.content = queued.content
+        self.headers = queued.headers or {}
 
     def raise_for_status(self) -> None:
         self._queued.raise_for_status()
@@ -132,12 +135,17 @@ class _FakeResponse:
     def json(self) -> object:
         return self._queued.json()
 
+    @property
+    def text(self) -> str:
+        return self.content.decode("utf-8")
+
 
 def _set_common_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("API_KEY", "test-key")
     monkeypatch.setenv("SANCTIONS_DATA_URL", "https://example.test/sanctions.csv")
     monkeypatch.setenv("TRON_ACCOUNT_URL", "https://tron.test/account")
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("WEB_ARTIFACT_DIR", str(tmp_path / "web"))
 
 
 @pytest.fixture()
@@ -219,10 +227,16 @@ def test_sanctions_search(client):
 
 
 def test_web_reputation(client, monkeypatch):
+    from screening_service.web_reputation import WebReputationResult
+
     def fake_search(query: str):
         return [
-            SimpleNamespace(
-                title="Test", url="https://news", published="2024", source="News", snippet="Body"
+            WebReputationResult(
+                title="Test",
+                url="https://news",
+                published="2024",
+                source="News",
+                snippet="Body",
             )
         ]
 
@@ -237,6 +251,106 @@ def test_web_reputation(client, monkeypatch):
     data = response.json()
     assert data["count"] == 1
     assert data["results"][0]["title"] == "Test"
+
+
+def test_web_reputation_service_collects_artifacts(monkeypatch, tmp_path):
+    from screening_service.web_reputation import WebReputationService
+
+    settings = config.Settings(
+        api_key="dummy",
+        data_dir=tmp_path / "cache",
+        web_artifact_dir=tmp_path / "artifacts",
+        sanctions_data_url="https://example.test/sanctions.csv",
+        tron_account_url="https://tron.test/account",
+    )
+    settings.data_dir.mkdir(parents=True, exist_ok=True)
+    settings.web_artifact_dir.mkdir(parents=True, exist_ok=True)
+
+    article_html = """
+    <html>
+        <head><title>Sample</title><style>body {color: red;}</style></head>
+        <body>
+            <h1>Headline</h1>
+            <p>Story content</p>
+            <script>alert('x')</script>
+        </body>
+    </html>
+    """
+
+    class _FakeDDGS:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def news(self, *args, **kwargs):
+            return iter(
+                [
+                    {
+                        "title": "Example Headline",
+                        "url": "https://example.test/article",
+                        "date": "2024-05-01",
+                        "source": "Example",
+                        "body": "Snippet",
+                    }
+                ]
+            )
+
+    class _DummyResponse:
+        def __init__(self) -> None:
+            self.status_code = 200
+            self.content = article_html.encode("utf-8")
+            self.headers = {"content-type": "text/html; charset=utf-8"}
+
+        def raise_for_status(self) -> None:
+            return None
+
+        @property
+        def text(self) -> str:
+            return self.content.decode("utf-8")
+
+    class _DummyClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def get(self, url, *args, **kwargs):
+            assert url == "https://example.test/article"
+            return _DummyResponse()
+
+    module = sys.modules["screening_service.web_reputation"]
+    monkeypatch.setattr(module, "DDGS", lambda: _FakeDDGS())
+    monkeypatch.setattr(module.httpx, "Client", _DummyClient)
+
+    service = WebReputationService(settings)
+    results = service.search("example")
+
+    assert len(results) == 1
+    result = results[0]
+
+    assert result.html is not None
+    html_path = Path(settings.web_artifact_dir) / result.html.path
+    assert html_path.exists()
+    saved_html = html_path.read_text(encoding="utf-8")
+    assert "<script" not in saved_html.lower()
+
+    assert result.text is not None
+    text_path = Path(settings.web_artifact_dir) / result.text.path
+    assert text_path.exists()
+    saved_text = text_path.read_text(encoding="utf-8")
+    assert "Story content" in saved_text
+    assert "alert" not in saved_text
+
+    assert result.screenshot is not None
+    screenshot_path = Path(settings.web_artifact_dir) / result.screenshot.path
+    assert screenshot_path.exists()
+    assert result.screenshot.size_bytes == screenshot_path.stat().st_size
 
 
 def test_tron_reputation(client):

@@ -56,7 +56,8 @@ package now provides the simplest path to productionising the workflows.
   OpenSanctions dataset. Supply an optional ISO8601 `date_of_birth` to narrow
   matches for common names.
 - `POST /web/reputation` – return the top DuckDuckGo News results for the
-  supplied query.
+  supplied query and persist sanitised HTML, extracted text, and screenshot
+  artefacts under the configured `WEB_ARTIFACT_DIR`.
 - `POST /tron/reputation` – fetch TronScan account metadata and calculate a
   deterministic risk score based on transaction activity and balances.
 - `GET /healthz` – expose lightweight service health, including sanctions
